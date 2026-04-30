@@ -1,0 +1,7 @@
+<resources>
+    <!-- Base application theme used by the Activity before Compose takes over -->
+    <style name="Theme.TuxPlanner" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+</resources>
