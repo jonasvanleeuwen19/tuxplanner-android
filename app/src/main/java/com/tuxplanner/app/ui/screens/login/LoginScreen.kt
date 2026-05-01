@@ -27,6 +27,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -51,7 +52,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tuxplanner.app.TuxPlannerApp
 
 @Composable
-fun LoginScreen(onLoginSuccess: () -> Unit) {
+fun LoginScreen(onLoginSuccess: () -> Unit, onBackToOnboarding: () -> Unit) {
     val context = LocalContext.current
     val container = (context.applicationContext as TuxPlannerApp).container
 
@@ -161,7 +162,7 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
                         Text(
                             text = uiState.error!!,
                             color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodySmall
+                            style = MaterialTheme.typography.bodyMedium
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                     }
@@ -189,6 +190,13 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
                         } else {
                             Text(if (uiState.isSetupRequired) "Create Account" else "Sign In")
                         }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    TextButton(
+                        onClick = onBackToOnboarding,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Back to onboarding")
                     }
                     Spacer(modifier = Modifier.height(48.dp))
                 }
