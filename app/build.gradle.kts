@@ -62,6 +62,7 @@ dependencies {
     implementation(libs.retrofit)
     implementation(libs.retrofit.converter.gson)
     implementation(libs.okhttp)
+    implementation(libs.okhttp.java.net.cookiejar)
     implementation(libs.okhttp.logging.interceptor)
     implementation(libs.gson)
 
