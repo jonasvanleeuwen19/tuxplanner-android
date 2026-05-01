@@ -19,6 +19,7 @@ import com.tuxplanner.app.TuxPlannerApp
 import com.tuxplanner.app.data.repository.ApiResult
 import com.tuxplanner.app.ui.screens.home.HomeScreen
 import com.tuxplanner.app.ui.screens.login.LoginScreen
+import com.tuxplanner.app.ui.screens.serverconfig.ServerConfigScreen
 
 @Composable
 fun AppNavHost() {
@@ -29,6 +30,11 @@ fun AppNavHost() {
     var startDestination by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
+        if (!container.appPreferences.isServerConfigured()) {
+            startDestination = Screen.ServerConfig
+            return@LaunchedEffect
+        }
+
         val loggedIn = container.appPreferences.isLoggedIn()
         startDestination = if (loggedIn) {
             // Verify session with a lightweight /me call;
@@ -54,6 +60,15 @@ fun AppNavHost() {
     }
 
     NavHost(navController = navController, startDestination = startDestination!!) {
+        composable(Screen.ServerConfig) {
+            ServerConfigScreen(
+                onConfigSaved = {
+                    navController.navigate(Screen.Login) {
+                        popUpTo(Screen.ServerConfig) { inclusive = true }
+                    }
+                }
+            )
+        }
         composable(Screen.Login) {
             LoginScreen(
                 onLoginSuccess = {
@@ -74,3 +89,4 @@ fun AppNavHost() {
         }
     }
 }
+
