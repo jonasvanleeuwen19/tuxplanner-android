@@ -21,6 +21,21 @@ class AppPreferences(private val context: Context) {
         private val KEY_IS_LOGGED_IN = booleanPreferencesKey("is_logged_in")
         const val DEFAULT_HOST = "10.0.2.2"
         const val DEFAULT_PORT = "8000"
+
+        /**
+         * Build a base URL from host and port.
+         * Port 443 → HTTPS (standard port omitted from URL).
+         * Port 80  → HTTP  (standard port omitted from URL).
+         * Any other port → HTTP with explicit port.
+         */
+        fun buildBaseUrl(host: String, port: String): String {
+            val p = port.trim()
+            return when (p) {
+                "443" -> "https://$host"
+                "80" -> "http://$host"
+                else -> "http://$host:$p"
+            }
+        }
     }
 
     val hostFlow: Flow<String> = context.dataStore.data.map { prefs ->
@@ -34,7 +49,7 @@ class AppPreferences(private val context: Context) {
     val baseUrlFlow: Flow<String> = context.dataStore.data.map { prefs ->
         val host = prefs[KEY_HOST] ?: DEFAULT_HOST
         val port = prefs[KEY_PORT] ?: DEFAULT_PORT
-        "http://$host:$port"
+        buildBaseUrl(host, port)
     }
 
     val isLoggedInFlow: Flow<Boolean> = context.dataStore.data.map { prefs ->
@@ -59,7 +74,7 @@ class AppPreferences(private val context: Context) {
         val data = context.dataStore.data.first()
         val host = data[KEY_HOST] ?: DEFAULT_HOST
         val port = data[KEY_PORT] ?: DEFAULT_PORT
-        return "http://$host:$port"
+        return buildBaseUrl(host, port)
     }
 
     /** Returns true once the user has explicitly saved a host/port. */

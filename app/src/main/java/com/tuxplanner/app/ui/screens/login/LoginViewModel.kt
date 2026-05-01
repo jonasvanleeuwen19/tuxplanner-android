@@ -47,8 +47,7 @@ class LoginViewModel(private val authRepository: AuthRepository) : ViewModel() {
                 is ApiResult.Success -> onSuccess()
                 is ApiResult.Error -> _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    error = if (result.code == 401) "Incorrect username or password"
-                    else result.message
+                    error = result.message
                 )
             }
         }

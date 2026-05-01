@@ -14,6 +14,13 @@ sealed class ApiResult<out T> {
     data class Error(val message: String, val code: Int? = null) : ApiResult<Nothing>()
 }
 
+/** Build a user-visible error string that includes the HTTP status code, message, and body. */
+private fun <T> httpError(response: retrofit2.Response<T>): ApiResult.Error {
+    val body = try { response.errorBody()?.string()?.trim() } catch (_: Exception) { null }
+    val detail = if (!body.isNullOrBlank()) "\n$body" else ""
+    return ApiResult.Error("HTTP ${response.code()} ${response.message()}$detail", response.code())
+}
+
 class AuthRepository(
     private val client: ApiClient,
     private val preferences: AppPreferences
@@ -24,7 +31,7 @@ class AuthRepository(
             if (response.isSuccessful) {
                 ApiResult.Success(response.body() ?: SetupStatusResponse())
             } else {
-                ApiResult.Error(response.message(), response.code())
+                httpError(response)
             }
         } catch (e: Exception) {
             ApiResult.Error(e.message ?: "Network error")
@@ -39,7 +46,7 @@ class AuthRepository(
                     preferences.setLoggedIn(true)
                     ApiResult.Success(response.body() ?: MessageResponse())
                 } else {
-                    ApiResult.Error(response.message(), response.code())
+                    httpError(response)
                 }
             } catch (e: Exception) {
                 ApiResult.Error(e.message ?: "Network error")
@@ -54,7 +61,7 @@ class AuthRepository(
                     preferences.setLoggedIn(true)
                     ApiResult.Success(response.body() ?: MessageResponse())
                 } else {
-                    ApiResult.Error(response.message(), response.code())
+                    httpError(response)
                 }
             } catch (e: Exception) {
                 ApiResult.Error(e.message ?: "Network error")
@@ -69,7 +76,7 @@ class AuthRepository(
             if (response.isSuccessful) {
                 ApiResult.Success(response.body() ?: MessageResponse())
             } else {
-                ApiResult.Error(response.message(), response.code())
+                httpError(response)
             }
         } catch (e: Exception) {
             preferences.setLoggedIn(false)
@@ -84,7 +91,7 @@ class AuthRepository(
             if (response.isSuccessful) {
                 ApiResult.Success(response.body() ?: UserInfo())
             } else {
-                ApiResult.Error(response.message(), response.code())
+                httpError(response)
             }
         } catch (e: Exception) {
             ApiResult.Error(e.message ?: "Network error")

@@ -75,6 +75,11 @@ fun AppNavHost() {
                     navController.navigate(Screen.Home) {
                         popUpTo(Screen.Login) { inclusive = true }
                     }
+                },
+                onBackToOnboarding = {
+                    navController.navigate(Screen.ServerConfig) {
+                        popUpTo(Screen.Login) { inclusive = true }
+                    }
                 }
             )
         }
