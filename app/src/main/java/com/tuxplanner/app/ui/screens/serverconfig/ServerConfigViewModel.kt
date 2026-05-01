@@ -1,17 +1,16 @@
-package com.tuxplanner.app.ui.screens.settings
+package com.tuxplanner.app.ui.screens.serverconfig
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tuxplanner.app.data.network.ApiClient
 import com.tuxplanner.app.data.preferences.AppPreferences
-import com.tuxplanner.app.data.repository.AuthRepository
 import com.tuxplanner.app.ui.common.validateHost
 import com.tuxplanner.app.ui.common.validatePort
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
-data class SettingsUiState(
+data class ServerConfigUiState(
     val host: String = AppPreferences.DEFAULT_HOST,
     val port: String = AppPreferences.DEFAULT_PORT,
     val hostError: String? = null,
@@ -20,14 +19,13 @@ data class SettingsUiState(
     val savedMessage: String? = null
 )
 
-class SettingsViewModel(
+class ServerConfigViewModel(
     private val preferences: AppPreferences,
-    private val apiClient: ApiClient,
-    private val authRepository: AuthRepository
+    private val apiClient: ApiClient
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(SettingsUiState())
-    val uiState: StateFlow<SettingsUiState> = _uiState
+    private val _uiState = MutableStateFlow(ServerConfigUiState())
+    val uiState: StateFlow<ServerConfigUiState> = _uiState
 
     init {
         viewModelScope.launch {
@@ -38,7 +36,7 @@ class SettingsViewModel(
         }
     }
 
-    fun saveServerConfig(host: String, port: String) {
+    fun saveConfig(host: String, port: String, onSaved: () -> Unit) {
         val hostTrimmed = host.trim()
         val portTrimmed = port.trim()
 
@@ -63,13 +61,7 @@ class SettingsViewModel(
                 isSaving = false,
                 savedMessage = "Saved"
             )
-        }
-    }
-
-    fun logout(onLoggedOut: () -> Unit) {
-        viewModelScope.launch {
-            authRepository.logout()
-            onLoggedOut()
+            onSaved()
         }
     }
 }

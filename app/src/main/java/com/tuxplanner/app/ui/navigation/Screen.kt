@@ -1,6 +1,7 @@
 package com.tuxplanner.app.ui.navigation
 
 object Screen {
+    const val ServerConfig = "server_config"
     const val Login = "login"
     const val Home = "home"
 }

@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Save
@@ -32,6 +33,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -54,7 +56,8 @@ fun SettingsScreen(onLogout: () -> Unit) {
     )
 
     val uiState by viewModel.uiState.collectAsState()
-    var urlInput by rememberSaveable(uiState.baseUrl) { mutableStateOf(uiState.baseUrl) }
+    var hostInput by rememberSaveable(uiState.host) { mutableStateOf(uiState.host) }
+    var portInput by rememberSaveable(uiState.port) { mutableStateOf(uiState.port) }
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(uiState.savedMessage) {
@@ -83,27 +86,41 @@ fun SettingsScreen(onLogout: () -> Unit) {
             Text("Backend", style = MaterialTheme.typography.titleMedium)
             Spacer(modifier = Modifier.height(12.dp))
             OutlinedTextField(
-                value = urlInput,
-                onValueChange = { urlInput = it },
-                label = { Text("Backend URL") },
-                placeholder = { Text("http://10.0.2.2:8000") },
+                value = hostInput,
+                onValueChange = { hostInput = it },
+                label = { Text("Host") },
+                placeholder = { Text("10.0.2.2") },
                 singleLine = true,
+                isError = uiState.hostError != null,
+                supportingText = uiState.hostError?.let { { Text(it) } },
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            OutlinedTextField(
+                value = portInput,
+                onValueChange = { portInput = it },
+                label = { Text("Port") },
+                placeholder = { Text("8000") },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                isError = uiState.portError != null,
+                supportingText = uiState.portError?.let { { Text(it) } },
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "For emulator accessing host machine, use http://10.0.2.2:8000",
+                text = "For emulator accessing host machine, use host 10.0.2.2 and port 8000.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(modifier = Modifier.height(12.dp))
             Button(
-                onClick = { viewModel.saveBaseUrl(urlInput) },
-                enabled = !uiState.isSaving && urlInput.isNotBlank(),
+                onClick = { viewModel.saveServerConfig(hostInput, portInput) },
+                enabled = !uiState.isSaving,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Icon(Icons.Default.Save, contentDescription = null)
-                Text("  Save URL")
+                Text("  Save")
             }
 
             Spacer(modifier = Modifier.height(32.dp))
@@ -138,3 +155,4 @@ fun SettingsScreen(onLogout: () -> Unit) {
         }
     }
 }
+

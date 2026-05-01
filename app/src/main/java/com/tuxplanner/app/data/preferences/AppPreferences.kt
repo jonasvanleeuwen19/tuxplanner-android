@@ -16,27 +16,55 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 class AppPreferences(private val context: Context) {
 
     companion object {
-        private val KEY_BASE_URL = stringPreferencesKey("base_url")
+        private val KEY_HOST = stringPreferencesKey("host")
+        private val KEY_PORT = stringPreferencesKey("port")
         private val KEY_IS_LOGGED_IN = booleanPreferencesKey("is_logged_in")
-        const val DEFAULT_BASE_URL = "http://10.0.2.2:8000"
+        const val DEFAULT_HOST = "10.0.2.2"
+        const val DEFAULT_PORT = "8000"
+    }
+
+    val hostFlow: Flow<String> = context.dataStore.data.map { prefs ->
+        prefs[KEY_HOST] ?: DEFAULT_HOST
+    }
+
+    val portFlow: Flow<String> = context.dataStore.data.map { prefs ->
+        prefs[KEY_PORT] ?: DEFAULT_PORT
     }
 
     val baseUrlFlow: Flow<String> = context.dataStore.data.map { prefs ->
-        prefs[KEY_BASE_URL] ?: DEFAULT_BASE_URL
+        val host = prefs[KEY_HOST] ?: DEFAULT_HOST
+        val port = prefs[KEY_PORT] ?: DEFAULT_PORT
+        "http://$host:$port"
     }
 
     val isLoggedInFlow: Flow<Boolean> = context.dataStore.data.map { prefs ->
         prefs[KEY_IS_LOGGED_IN] ?: false
     }
 
-    suspend fun getBaseUrl(): String =
-        context.dataStore.data.map { it[KEY_BASE_URL] ?: DEFAULT_BASE_URL }.first()
+    suspend fun getHost(): String =
+        context.dataStore.data.map { it[KEY_HOST] ?: DEFAULT_HOST }.first()
 
-    suspend fun setBaseUrl(url: String) {
-        context.dataStore.edit { prefs ->
-            prefs[KEY_BASE_URL] = url
-        }
+    suspend fun setHost(host: String) {
+        context.dataStore.edit { prefs -> prefs[KEY_HOST] = host }
     }
+
+    suspend fun getPort(): String =
+        context.dataStore.data.map { it[KEY_PORT] ?: DEFAULT_PORT }.first()
+
+    suspend fun setPort(port: String) {
+        context.dataStore.edit { prefs -> prefs[KEY_PORT] = port }
+    }
+
+    suspend fun getBaseUrl(): String {
+        val data = context.dataStore.data.first()
+        val host = data[KEY_HOST] ?: DEFAULT_HOST
+        val port = data[KEY_PORT] ?: DEFAULT_PORT
+        return "http://$host:$port"
+    }
+
+    /** Returns true once the user has explicitly saved a host/port. */
+    suspend fun isServerConfigured(): Boolean =
+        context.dataStore.data.map { it[KEY_HOST] != null }.first()
 
     suspend fun setLoggedIn(loggedIn: Boolean) {
         context.dataStore.edit { prefs ->
