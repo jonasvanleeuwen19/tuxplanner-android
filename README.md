@@ -12,8 +12,22 @@ Built with **Kotlin + Jetpack Compose + Material 3**.
 |---|---|
 | Login / First-run setup | ✅ |
 | Configurable backend URL | ✅ |
-| Events list (create, delete) | ✅ |
-| Todos list (create, toggle, delete) | ✅ |
+| Dashboard with live clock & greeting | ✅ |
+| Today's events on dashboard | ✅ |
+| Today's tasks (with toggle) on dashboard | ✅ |
+| Work sessions summary on dashboard | ✅ |
+| Events list (create, edit, delete) | ✅ |
+| Event detail bottom sheet | ✅ |
+| Full event form (title, desc, location, datetime, all-day, color, calendar) | ✅ |
+| Calendar list management (create, edit, delete, visibility toggle) | ✅ |
+| Filter events by calendar list | ✅ |
+| Todos list (create, edit, toggle, delete) | ✅ |
+| Todo detail bottom sheet | ✅ |
+| Full todo form (title, desc, priority, due date, list) | ✅ |
+| Filter todos by status (All / Pending / Completed) | ✅ |
+| Filter todos by todo list | ✅ |
+| Work session management per todo (add, delete) | ✅ |
+| Todo list management (create, edit, delete) via API | ✅ |
 | Material 3 UI + dark mode | ✅ |
 | GitHub Actions release build | ✅ |
 
@@ -92,18 +106,24 @@ app/src/main/java/com/tuxplanner/app/
 │   │   └── AppPreferences.kt # DataStore wrapper (base URL, login state)
 │   └── repository/
 │       ├── AuthRepository.kt
+│       ├── CalendarListRepository.kt
 │       ├── EventRepository.kt
+│       ├── TaskSessionRepository.kt
+│       ├── TodoListRepository.kt
 │       └── TodoRepository.kt
 └── ui/
     ├── navigation/
     │   ├── Screen.kt          # Route constants
     │   └── AppNavHost.kt      # Root NavHost
     ├── screens/
-    │   ├── login/             # LoginScreen + LoginViewModel
+    │   ├── calendarlists/     # CalendarListsScreen + CalendarListsViewModel
+    │   ├── dashboard/         # DashboardScreen + DashboardViewModel
+    │   ├── events/            # EventsScreen + EventsViewModel + EventDetailSheet
     │   ├── home/              # HomeScreen (bottom navigation host)
-    │   ├── events/            # EventsScreen + EventsViewModel
-    │   ├── todos/             # TodosScreen + TodosViewModel
-    │   └── settings/          # SettingsScreen + SettingsViewModel
+    │   ├── login/             # LoginScreen + LoginViewModel
+    │   ├── serverconfig/      # ServerConfigScreen + ServerConfigViewModel
+    │   ├── settings/          # SettingsScreen + SettingsViewModel
+    │   └── todos/             # TodosScreen + TodosViewModel + TodoDetailSheet
     └── theme/                 # Material 3 colors, typography, theme
 ```
 
@@ -168,10 +188,16 @@ To use a real signing key:
 | `/api/auth/login` | POST | Login (form-encoded) → sets httpOnly cookie |
 | `/api/auth/logout` | POST | Clear auth cookie |
 | `/api/auth/me` | GET | Get current user info |
+| `/api/calendar-lists/` | GET/POST | List or create calendar lists |
+| `/api/calendar-lists/{id}` | PUT/DELETE | Update or delete calendar list |
 | `/api/events/` | GET/POST | List or create events |
 | `/api/events/{id}` | GET/PUT/DELETE | Read, update, or delete event |
 | `/api/todos/` | GET/POST | List or create todos |
 | `/api/todos/{id}` | GET/PUT/DELETE | Read, update, or delete todo |
+| `/api/todo-lists/` | GET/POST | List or create todo lists |
+| `/api/todo-lists/{id}` | PUT/DELETE | Update or delete todo list |
+| `/api/todos/{id}/sessions/` | GET/POST | List or create work sessions |
+| `/api/todos/{id}/sessions/{sid}` | PUT/DELETE | Update or delete work session |
 
 Authentication uses an **httpOnly JWT cookie** (`access_token`). OkHttp's `JavaNetCookieJar` handles this transparently.
 

@@ -1,0 +1,377 @@
+package com.tuxplanner.app.ui.screens.todos
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.RadioButtonUnchecked
+import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SuggestionChip
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import com.tuxplanner.app.data.model.TaskSessionResponse
+import com.tuxplanner.app.data.model.TodoResponse
+import com.tuxplanner.app.ui.theme.PriorityHigh
+import com.tuxplanner.app.ui.theme.PriorityLow
+import com.tuxplanner.app.ui.theme.PriorityMedium
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TodoDetailSheet(
+    todo: TodoResponse,
+    sessions: List<TaskSessionResponse>,
+    isLoadingSessions: Boolean,
+    onDismiss: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+    onToggleComplete: () -> Unit,
+    onAddSession: (start: String, end: String?, note: String?) -> Unit,
+    onDeleteSession: (sessionId: Int) -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var showAddSessionDialog by remember { mutableStateOf(false) }
+
+    val priorityColor = when (todo.priority) {
+        "high" -> PriorityHigh
+        "low" -> PriorityLow
+        else -> PriorityMedium
+    }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Title + complete toggle
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onToggleComplete, modifier = Modifier.size(32.dp)) {
+                    Icon(
+                        imageVector = if (todo.completed) Icons.Default.CheckCircle
+                        else Icons.Default.RadioButtonUnchecked,
+                        contentDescription = null,
+                        tint = if (todo.completed) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = todo.title,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            // Priority badge
+            SuggestionChip(
+                onClick = {},
+                label = {
+                    Text(
+                        text = todo.priority.replaceFirstChar { it.uppercase() },
+                        color = priorityColor
+                    )
+                }
+            )
+
+            HorizontalDivider()
+
+            // Due date
+            if (todo.dueDate != null) {
+                Row {
+                    Text(
+                        text = "Due: ",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = formatTodoDate(todo.dueDate),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
+
+            // Description
+            if (!todo.description.isNullOrBlank()) {
+                Text(
+                    text = todo.description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+
+            // Linked event
+            if (todo.eventId != null) {
+                Row {
+                    Text(
+                        text = "Linked event ID: ",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "${todo.eventId}",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
+
+            HorizontalDivider()
+
+            // Work sessions section
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Work Sessions (${sessions.size})",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                IconButton(onClick = { showAddSessionDialog = true }) {
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = "Add session",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+
+            if (isLoadingSessions) {
+                CircularProgressIndicator(modifier = Modifier.size(24.dp))
+            } else if (sessions.isEmpty()) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.Timer,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "No sessions yet",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            } else {
+                sessions.forEach { session ->
+                    SessionRow(
+                        session = session,
+                        onDelete = { onDeleteSession(session.id) }
+                    )
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp))
+                }
+            }
+
+            HorizontalDivider()
+
+            // Action buttons
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedButton(
+                    onClick = onEdit,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Edit")
+                }
+                Button(
+                    onClick = onDelete,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                        contentColor = MaterialTheme.colorScheme.onErrorContainer
+                    ),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Delete")
+                }
+            }
+        }
+    }
+
+    if (showAddSessionDialog) {
+        AddSessionDialog(
+            onDismiss = { showAddSessionDialog = false },
+            onConfirm = { start, end, note ->
+                onAddSession(start, end, note)
+                showAddSessionDialog = false
+            }
+        )
+    }
+}
+
+@Composable
+private fun SessionRow(session: TaskSessionResponse, onDelete: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            Icons.Default.Timer,
+            contentDescription = null,
+            modifier = Modifier.size(16.dp),
+            tint = MaterialTheme.colorScheme.primary
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = formatSessionTime(session.start),
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.Medium
+            )
+            if (session.end != null) {
+                Text(
+                    text = "→ ${formatSessionTime(session.end)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            if (!session.note.isNullOrBlank()) {
+                Text(
+                    text = session.note,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+            Icon(
+                Icons.Default.Delete,
+                contentDescription = "Delete session",
+                tint = MaterialTheme.colorScheme.error,
+                modifier = Modifier.size(16.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun AddSessionDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (String, String?, String?) -> Unit
+) {
+    val fmt = remember { DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm") }
+    var startStr by rememberSaveable {
+        mutableStateOf(LocalDateTime.now().format(fmt))
+    }
+    var endStr by rememberSaveable { mutableStateOf("") }
+    var note by rememberSaveable { mutableStateOf("") }
+    var startError by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Add Work Session") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = startStr,
+                    onValueChange = { startStr = it; startError = false },
+                    label = { Text("Start * (yyyy-MM-dd HH:mm)") },
+                    isError = startError,
+                    supportingText = if (startError) ({ Text("Invalid date") }) else null,
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = endStr,
+                    onValueChange = { endStr = it },
+                    label = { Text("End (optional)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = note,
+                    onValueChange = { note = it },
+                    label = { Text("Note (optional)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    maxLines = 3
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    val parsedStart = runCatching {
+                        LocalDateTime.parse(startStr, fmt).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+                    }.getOrNull()
+                    if (parsedStart == null) { startError = true; return@TextButton }
+                    val parsedEnd = runCatching {
+                        LocalDateTime.parse(endStr, fmt).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+                    }.getOrNull()
+                    onConfirm(parsedStart, parsedEnd, note.ifBlank { null })
+                }
+            ) { Text("Add") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+    )
+}
+
+private fun formatTodoDate(isoStr: String): String =
+    runCatching {
+        val dt = LocalDateTime.parse(isoStr.take(19))
+        dt.format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM, FormatStyle.SHORT))
+    }.getOrElse {
+        runCatching {
+            java.time.LocalDate.parse(isoStr.take(10))
+                .format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM))
+        }.getOrDefault(isoStr)
+    }
+
+private fun formatSessionTime(isoStr: String): String =
+    runCatching {
+        val dt = LocalDateTime.parse(isoStr.take(19))
+        dt.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
+    }.getOrDefault(isoStr)

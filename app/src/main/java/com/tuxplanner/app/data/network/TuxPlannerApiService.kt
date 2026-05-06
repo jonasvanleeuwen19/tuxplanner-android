@@ -1,13 +1,21 @@
 package com.tuxplanner.app.data.network
 
+import com.tuxplanner.app.data.model.CalendarListCreate
 import com.tuxplanner.app.data.model.CalendarListResponse
+import com.tuxplanner.app.data.model.CalendarListUpdate
 import com.tuxplanner.app.data.model.EventCreate
 import com.tuxplanner.app.data.model.EventResponse
 import com.tuxplanner.app.data.model.EventUpdate
 import com.tuxplanner.app.data.model.MessageResponse
 import com.tuxplanner.app.data.model.SetupRequest
 import com.tuxplanner.app.data.model.SetupStatusResponse
+import com.tuxplanner.app.data.model.TaskSessionCreate
+import com.tuxplanner.app.data.model.TaskSessionResponse
+import com.tuxplanner.app.data.model.TaskSessionUpdate
 import com.tuxplanner.app.data.model.TodoCreate
+import com.tuxplanner.app.data.model.TodoListCreate
+import com.tuxplanner.app.data.model.TodoListResponse
+import com.tuxplanner.app.data.model.TodoListUpdate
 import com.tuxplanner.app.data.model.TodoResponse
 import com.tuxplanner.app.data.model.TodoUpdate
 import com.tuxplanner.app.data.model.UserInfo
@@ -50,6 +58,18 @@ interface TuxPlannerApiService {
 
     @GET("api/calendar-lists/")
     suspend fun getCalendarLists(): Response<List<CalendarListResponse>>
+
+    @POST("api/calendar-lists/")
+    suspend fun createCalendarList(@Body body: CalendarListCreate): Response<CalendarListResponse>
+
+    @PUT("api/calendar-lists/{id}")
+    suspend fun updateCalendarList(
+        @Path("id") id: Int,
+        @Body body: CalendarListUpdate
+    ): Response<CalendarListResponse>
+
+    @DELETE("api/calendar-lists/{id}")
+    suspend fun deleteCalendarList(@Path("id") id: Int): Response<Unit>
 
     // ── Events ────────────────────────────────────────────────
 
@@ -96,4 +116,45 @@ interface TuxPlannerApiService {
 
     @DELETE("api/todos/{id}")
     suspend fun deleteTodo(@Path("id") id: Int): Response<Unit>
+
+    // ── Todo Lists ────────────────────────────────────────────
+
+    @GET("api/todo-lists/")
+    suspend fun getTodoLists(): Response<List<TodoListResponse>>
+
+    @POST("api/todo-lists/")
+    suspend fun createTodoList(@Body body: TodoListCreate): Response<TodoListResponse>
+
+    @PUT("api/todo-lists/{id}")
+    suspend fun updateTodoList(
+        @Path("id") id: Int,
+        @Body body: TodoListUpdate
+    ): Response<TodoListResponse>
+
+    @DELETE("api/todo-lists/{id}")
+    suspend fun deleteTodoList(@Path("id") id: Int): Response<Unit>
+
+    // ── Task Sessions ─────────────────────────────────────────
+
+    @GET("api/todos/{todoId}/sessions/")
+    suspend fun getTaskSessions(@Path("todoId") todoId: Int): Response<List<TaskSessionResponse>>
+
+    @POST("api/todos/{todoId}/sessions/")
+    suspend fun createTaskSession(
+        @Path("todoId") todoId: Int,
+        @Body body: TaskSessionCreate
+    ): Response<TaskSessionResponse>
+
+    @PUT("api/todos/{todoId}/sessions/{sessionId}")
+    suspend fun updateTaskSession(
+        @Path("todoId") todoId: Int,
+        @Path("sessionId") sessionId: Int,
+        @Body body: TaskSessionUpdate
+    ): Response<TaskSessionResponse>
+
+    @DELETE("api/todos/{todoId}/sessions/{sessionId}")
+    suspend fun deleteTaskSession(
+        @Path("todoId") todoId: Int,
+        @Path("sessionId") sessionId: Int
+    ): Response<Unit>
 }

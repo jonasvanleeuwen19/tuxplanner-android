@@ -108,3 +108,60 @@ data class TodoUpdate(
     val todoListId: Int? = null,
     val category: String? = null
 )
+
+// ── Todo List ─────────────────────────────────────────────────
+
+data class TodoListResponse(
+    val id: Int = 0,
+    val name: String = "",
+    val color: String = "#3b82f6",
+    val createdAt: String = ""
+)
+
+data class TodoListCreate(
+    val name: String,
+    val color: String = "#3b82f6"
+)
+
+data class TodoListUpdate(
+    val name: String? = null,
+    val color: String? = null
+)
+
+// ── Calendar List CRUD ────────────────────────────────────────
+
+data class CalendarListCreate(
+    val name: String,
+    val color: String = "#3b82f6",
+    val isVisible: Boolean = true
+)
+
+data class CalendarListUpdate(
+    val name: String? = null,
+    val color: String? = null,
+    val isVisible: Boolean? = null
+)
+
+// ── Task Session ──────────────────────────────────────────────
+
+data class TaskSessionResponse(
+    val id: Int = 0,
+    val todoId: Int = 0,
+    val eventId: Int? = null,
+    val start: String = "",
+    val end: String? = null,
+    val note: String? = null,
+    val createdAt: String = ""
+)
+
+data class TaskSessionCreate(
+    val start: String,
+    val end: String? = null,
+    val note: String? = null
+)
+
+data class TaskSessionUpdate(
+    val start: String? = null,
+    val end: String? = null,
+    val note: String? = null
+)

@@ -17,6 +17,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.tuxplanner.app.TuxPlannerApp
 import com.tuxplanner.app.data.repository.ApiResult
+import com.tuxplanner.app.ui.screens.calendarlists.CalendarListsScreen
 import com.tuxplanner.app.ui.screens.home.HomeScreen
 import com.tuxplanner.app.ui.screens.login.LoginScreen
 import com.tuxplanner.app.ui.screens.serverconfig.ServerConfigScreen
@@ -89,9 +90,16 @@ fun AppNavHost() {
                     navController.navigate(Screen.Login) {
                         popUpTo(Screen.Home) { inclusive = true }
                     }
+                },
+                onNavigateToCalendarLists = {
+                    navController.navigate(Screen.CalendarLists)
                 }
+            )
+        }
+        composable(Screen.CalendarLists) {
+            CalendarListsScreen(
+                onBack = { navController.popBackStack() }
             )
         }
     }
 }
-
