@@ -12,13 +12,23 @@ import com.tuxplanner.app.data.repository.EventRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import java.time.DayOfWeek
+import java.time.LocalDate
+import java.time.YearMonth
+import java.time.temporal.TemporalAdjusters
+
+enum class CalendarViewType { Month, Week, List }
 
 data class EventsUiState(
     val isLoading: Boolean = false,
     val events: List<EventResponse> = emptyList(),
     val calendarLists: List<CalendarListResponse> = emptyList(),
     val filterCalendarListId: Int? = null,
-    val error: String? = null
+    val error: String? = null,
+    val viewType: CalendarViewType = CalendarViewType.Month,
+    val selectedDate: LocalDate = LocalDate.now(),
+    val displayedYearMonth: YearMonth = YearMonth.now(),
+    val displayedWeekStart: LocalDate = LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
 )
 
 class EventsViewModel(
@@ -98,5 +108,33 @@ class EventsViewModel(
 
     fun setCalendarListFilter(id: Int?) {
         _uiState.value = _uiState.value.copy(filterCalendarListId = id)
+    }
+
+    fun setViewType(type: CalendarViewType) {
+        _uiState.value = _uiState.value.copy(viewType = type)
+    }
+
+    fun selectDate(date: LocalDate) {
+        _uiState.value = _uiState.value.copy(selectedDate = date)
+    }
+
+    fun prevMonth() {
+        val prev = _uiState.value.displayedYearMonth.minusMonths(1)
+        _uiState.value = _uiState.value.copy(displayedYearMonth = prev)
+    }
+
+    fun nextMonth() {
+        val next = _uiState.value.displayedYearMonth.plusMonths(1)
+        _uiState.value = _uiState.value.copy(displayedYearMonth = next)
+    }
+
+    fun prevWeek() {
+        val prev = _uiState.value.displayedWeekStart.minusWeeks(1)
+        _uiState.value = _uiState.value.copy(displayedWeekStart = prev)
+    }
+
+    fun nextWeek() {
+        val next = _uiState.value.displayedWeekStart.plusWeeks(1)
+        _uiState.value = _uiState.value.copy(displayedWeekStart = next)
     }
 }

@@ -1,8 +1,6 @@
 package com.tuxplanner.app.ui.screens.events
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,21 +10,17 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.CalendarViewMonth
+import androidx.compose.material.icons.filled.CalendarViewWeek
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.ViewAgenda
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
@@ -54,9 +48,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
@@ -69,7 +61,6 @@ import com.tuxplanner.app.data.model.EventResponse
 import com.tuxplanner.app.data.model.EventUpdate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -99,11 +90,45 @@ fun EventsScreen(onNavigateToCalendarLists: () -> Unit = {}) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Events") },
+                title = { Text("Calendar") },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer
                 ),
                 actions = {
+                    // View type toggles
+                    IconButton(
+                        onClick = { viewModel.setViewType(CalendarViewType.Month) }
+                    ) {
+                        Icon(
+                            Icons.Default.CalendarViewMonth,
+                            contentDescription = "Month view",
+                            tint = if (uiState.viewType == CalendarViewType.Month)
+                                MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                    IconButton(
+                        onClick = { viewModel.setViewType(CalendarViewType.Week) }
+                    ) {
+                        Icon(
+                            Icons.Default.CalendarViewWeek,
+                            contentDescription = "Week view",
+                            tint = if (uiState.viewType == CalendarViewType.Week)
+                                MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                    IconButton(
+                        onClick = { viewModel.setViewType(CalendarViewType.List) }
+                    ) {
+                        Icon(
+                            Icons.Default.ViewAgenda,
+                            contentDescription = "List view",
+                            tint = if (uiState.viewType == CalendarViewType.List)
+                                MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                     IconButton(onClick = { viewModel.loadEvents() }) {
                         Icon(Icons.Default.Refresh, contentDescription = "Refresh")
                     }
@@ -129,7 +154,7 @@ fun EventsScreen(onNavigateToCalendarLists: () -> Unit = {}) {
                 Row(
                     modifier = Modifier
                         .horizontalScroll(rememberScrollState())
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     FilterChip(
@@ -151,20 +176,45 @@ fun EventsScreen(onNavigateToCalendarLists: () -> Unit = {}) {
                 }
             }
 
+            // Main content area
             Box(modifier = Modifier.fillMaxSize()) {
                 when {
-                    uiState.isLoading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                    uiState.isLoading -> CircularProgressIndicator(
+                        modifier = Modifier.align(Alignment.Center)
+                    )
                     uiState.error != null -> ErrorView(
                         message = uiState.error!!,
                         onRetry = { viewModel.loadEvents() },
                         modifier = Modifier.align(Alignment.Center)
                     )
-                    filteredEvents.isEmpty() -> EmptyView(modifier = Modifier.align(Alignment.Center))
-                    else -> EventsList(
-                        events = filteredEvents,
-                        onTap = { selectedEvent = it },
-                        onDelete = { viewModel.deleteEvent(it) }
-                    )
+                    else -> when (uiState.viewType) {
+                        CalendarViewType.Month -> MonthCalendarView(
+                            events = filteredEvents,
+                            calendarLists = uiState.calendarLists,
+                            displayedYearMonth = uiState.displayedYearMonth,
+                            selectedDate = uiState.selectedDate,
+                            onPrevMonth = { viewModel.prevMonth() },
+                            onNextMonth = { viewModel.nextMonth() },
+                            onSelectDate = { viewModel.selectDate(it) },
+                            onTapEvent = { selectedEvent = it },
+                            onDeleteEvent = { viewModel.deleteEvent(it) }
+                        )
+                        CalendarViewType.Week -> WeekCalendarView(
+                            events = filteredEvents,
+                            calendarLists = uiState.calendarLists,
+                            weekStart = uiState.displayedWeekStart,
+                            onPrevWeek = { viewModel.prevWeek() },
+                            onNextWeek = { viewModel.nextWeek() },
+                            onTapEvent = { selectedEvent = it },
+                            onDeleteEvent = { viewModel.deleteEvent(it) }
+                        )
+                        CalendarViewType.List -> AgendaCalendarView(
+                            events = filteredEvents,
+                            calendarLists = uiState.calendarLists,
+                            onTapEvent = { selectedEvent = it },
+                            onDeleteEvent = { viewModel.deleteEvent(it) }
+                        )
+                    }
                 }
             }
         }
@@ -193,6 +243,8 @@ fun EventsScreen(onNavigateToCalendarLists: () -> Unit = {}) {
         EventFormDialog(
             title = "New Event",
             calendarLists = uiState.calendarLists,
+            initialStart = uiState.selectedDate.atStartOfDay()
+                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")),
             onDismiss = { showAddDialog = false },
             onConfirm = { eventTitle, description, location, startStr, endStr, allDay, color, calListId ->
                 val fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
@@ -240,8 +292,12 @@ fun EventsScreen(onNavigateToCalendarLists: () -> Unit = {}) {
                 onConfirm = { eventTitle, description, location, startStr, endStr, allDay, color, calListId ->
                     val isoFormatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME
                     val userFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
-                    val start = runCatching { LocalDateTime.parse(startStr, userFormatter).format(isoFormatter) }.getOrNull()
-                    val end = runCatching { LocalDateTime.parse(endStr, userFormatter).format(isoFormatter) }.getOrNull()
+                    val start = runCatching {
+                        LocalDateTime.parse(startStr, userFormatter).format(isoFormatter)
+                    }.getOrNull()
+                    val end = runCatching {
+                        LocalDateTime.parse(endStr, userFormatter).format(isoFormatter)
+                    }.getOrNull()
                     viewModel.updateEvent(
                         event.id,
                         EventUpdate(
@@ -259,88 +315,6 @@ fun EventsScreen(onNavigateToCalendarLists: () -> Unit = {}) {
                     editingEvent = null
                 }
             )
-        }
-    }
-}
-
-@Composable
-private fun EventsList(
-    events: List<EventResponse>,
-    onTap: (EventResponse) -> Unit,
-    onDelete: (Int) -> Unit
-) {
-    LazyColumn(modifier = Modifier.fillMaxSize()) {
-        items(events, key = { it.id }) { event ->
-            EventCard(
-                event = event,
-                onTap = { onTap(event) },
-                onDelete = { onDelete(event.id) }
-            )
-        }
-    }
-}
-
-@Composable
-private fun EventCard(event: EventResponse, onTap: () -> Unit, onDelete: () -> Unit) {
-    val colorHex = event.color ?: "#1565C0"
-    val color = remember(colorHex) {
-        runCatching { Color(android.graphics.Color.parseColor(colorHex)) }.getOrDefault(Color(0xFF1565C0))
-    }
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp)
-            .clickable { onTap() },
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = Icons.Default.CalendarToday,
-                contentDescription = null,
-                tint = color,
-                modifier = Modifier.size(32.dp)
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = event.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = formatDateTime(event.start),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                if (!event.location.isNullOrBlank()) {
-                    Text(
-                        text = event.location,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                if (event.taskCount > 0) {
-                    Text(
-                        text = "${event.taskCount} task(s)",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.tertiary
-                    )
-                }
-            }
-            if (event.source != "ical") {
-                IconButton(onClick = onDelete) {
-                    Icon(
-                        Icons.Default.Delete,
-                        contentDescription = "Delete event",
-                        tint = MaterialTheme.colorScheme.error
-                    )
-                }
-            }
         }
     }
 }
@@ -447,7 +421,9 @@ private fun EventFormDialog(
                             onValueChange = {},
                             readOnly = true,
                             label = { Text("Calendar List") },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = calendarExpanded) },
+                            trailingIcon = {
+                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = calendarExpanded)
+                            },
                             modifier = Modifier
                                 .menuAnchor(MenuAnchorType.PrimaryNotEditable)
                                 .fillMaxWidth()
@@ -475,7 +451,10 @@ private fun EventFormDialog(
             TextButton(
                 onClick = {
                     if (eventTitle.isBlank()) { titleError = true; return@TextButton }
-                    onConfirm(eventTitle, description, location, startStr, endStr, allDay, colorStr, selectedListId)
+                    onConfirm(
+                        eventTitle, description, location,
+                        startStr, endStr, allDay, colorStr, selectedListId
+                    )
                 }
             ) { Text("Save") }
         },
@@ -491,32 +470,3 @@ private fun ErrorView(message: String, onRetry: () -> Unit, modifier: Modifier =
         TextButton(onClick = onRetry) { Text("Retry") }
     }
 }
-
-@Composable
-private fun EmptyView(modifier: Modifier = Modifier) {
-    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Icon(
-            imageVector = Icons.Default.CalendarToday,
-            contentDescription = null,
-            modifier = Modifier.size(64.dp),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            text = "No events yet",
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Text(
-            text = "Tap + to add an event",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}
-
-private fun formatDateTime(isoStr: String): String =
-    runCatching {
-        val dt = LocalDateTime.parse(isoStr.take(19))
-        dt.format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM, FormatStyle.SHORT))
-    }.getOrDefault(isoStr)

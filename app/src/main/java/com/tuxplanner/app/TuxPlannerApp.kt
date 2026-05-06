@@ -12,7 +12,7 @@ import com.tuxplanner.app.data.repository.TodoRepository
 
 class AppContainer(app: Application) {
     val appPreferences = AppPreferences(app)
-    val apiClient = ApiClient(appPreferences)
+    val apiClient = ApiClient(appPreferences, app)
     val authRepository = AuthRepository(apiClient, appPreferences)
     val eventRepository = EventRepository(apiClient)
     val todoRepository = TodoRepository(apiClient)
