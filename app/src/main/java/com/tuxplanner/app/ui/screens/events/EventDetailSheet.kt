@@ -88,9 +88,9 @@ fun EventDetailSheet(
             HorizontalDivider()
 
             // Date/time
-            InfoRow(label = "Start", value = formatEventDateTime(event.start))
+            InfoRow(label = "Start", value = formatDetailDateTime(event.start))
             if (event.end != null) {
-                InfoRow(label = "End", value = formatEventDateTime(event.end))
+                InfoRow(label = "End", value = formatDetailDateTime(event.end))
             }
             if (event.allDay) {
                 InfoRow(label = "All Day", value = "Yes")
@@ -190,7 +190,7 @@ private fun InfoRow(label: String, value: String) {
     }
 }
 
-private fun formatEventDateTime(isoStr: String): String =
+private fun formatDetailDateTime(isoStr: String): String =
     runCatching {
         val dt = LocalDateTime.parse(isoStr.take(19))
         dt.format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM, FormatStyle.SHORT))
