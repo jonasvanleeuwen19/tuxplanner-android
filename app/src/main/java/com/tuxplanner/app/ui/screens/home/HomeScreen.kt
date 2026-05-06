@@ -38,7 +38,7 @@ fun HomeScreen(onLogout: () -> Unit, onNavigateToCalendarLists: () -> Unit) {
 
     val navItems = listOf(
         BottomNavItem(HomeTab.Dashboard, "Dashboard", Icons.Default.Home),
-        BottomNavItem(HomeTab.Events, "Events", Icons.Default.CalendarMonth),
+        BottomNavItem(HomeTab.Events, "Calendar", Icons.Default.CalendarMonth),
         BottomNavItem(HomeTab.Todos, "Todos", Icons.Default.CheckCircle),
         BottomNavItem(HomeTab.Settings, "Settings", Icons.Default.Settings)
     )
