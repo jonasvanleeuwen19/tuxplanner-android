@@ -1,5 +1,7 @@
 package com.tuxplanner.app.ui.screens.todos
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,6 +15,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
@@ -27,6 +31,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -39,6 +44,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -69,12 +75,36 @@ fun TodosScreen() {
         factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                TodosViewModel(container.todoRepository) as T
+                TodosViewModel(
+                    container.todoRepository,
+                    container.todoListRepository,
+                    container.taskSessionRepository
+                ) as T
         }
     )
 
     val uiState by viewModel.uiState.collectAsState()
     var showAddDialog by remember { mutableStateOf(false) }
+    var selectedTodo by remember { mutableStateOf<TodoResponse?>(null) }
+    var showEditDialog by remember { mutableStateOf(false) }
+    var editingTodo by remember { mutableStateOf<TodoResponse?>(null) }
+
+    // Load sessions when a todo is selected
+    LaunchedEffect(selectedTodo) {
+        selectedTodo?.let { viewModel.loadSessions(it.id) }
+    }
+
+    val filteredTodos = remember(uiState.todos, uiState.filter, uiState.selectedListId) {
+        uiState.todos.filter { todo ->
+            val listMatch = uiState.selectedListId == null || todo.todoListId == uiState.selectedListId
+            val filterMatch = when (uiState.filter) {
+                "pending" -> !todo.completed
+                "completed" -> todo.completed
+                else -> true
+            }
+            listMatch && filterMatch
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -96,54 +126,168 @@ fun TodosScreen() {
             }
         }
     ) { innerPadding ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            when {
-                uiState.isLoading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                uiState.error != null -> ErrorView(
-                    message = uiState.error!!,
-                    onRetry = { viewModel.loadTodos() },
-                    modifier = Modifier.align(Alignment.Center)
-                )
-                uiState.todos.isEmpty() -> EmptyView(modifier = Modifier.align(Alignment.Center))
-                else -> TodosList(
-                    todos = uiState.todos,
-                    onToggle = { viewModel.toggleComplete(it) },
-                    onDelete = { viewModel.deleteTodo(it) }
-                )
+            // Status filter chips
+            Row(
+                modifier = Modifier
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                listOf("all" to "All", "pending" to "Pending", "completed" to "Completed").forEach { (value, label) ->
+                    FilterChip(
+                        selected = uiState.filter == value,
+                        onClick = { viewModel.setFilter(value) },
+                        label = { Text(label) }
+                    )
+                }
+            }
+
+            // Todo list filter chips
+            if (uiState.todoLists.isNotEmpty()) {
+                Row(
+                    modifier = Modifier
+                        .horizontalScroll(rememberScrollState())
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    FilterChip(
+                        selected = uiState.selectedListId == null,
+                        onClick = { viewModel.setListFilter(null) },
+                        label = { Text("All Lists") }
+                    )
+                    uiState.todoLists.forEach { list ->
+                        FilterChip(
+                            selected = uiState.selectedListId == list.id,
+                            onClick = {
+                                viewModel.setListFilter(
+                                    if (uiState.selectedListId == list.id) null else list.id
+                                )
+                            },
+                            label = { Text(list.name) }
+                        )
+                    }
+                }
+            }
+
+            Box(modifier = Modifier.fillMaxSize()) {
+                when {
+                    uiState.isLoading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                    uiState.error != null -> ErrorView(
+                        message = uiState.error!!,
+                        onRetry = { viewModel.loadTodos() },
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                    filteredTodos.isEmpty() -> EmptyView(modifier = Modifier.align(Alignment.Center))
+                    else -> TodosList(
+                        todos = filteredTodos,
+                        onTap = { selectedTodo = it },
+                        onToggle = { viewModel.toggleComplete(it) },
+                        onDelete = { viewModel.deleteTodo(it) }
+                    )
+                }
             }
         }
     }
 
+    // Todo detail bottom sheet
+    selectedTodo?.let { todo ->
+        TodoDetailSheet(
+            todo = todo,
+            sessions = uiState.sessions,
+            isLoadingSessions = uiState.isLoadingSessions,
+            onDismiss = { selectedTodo = null },
+            onEdit = {
+                editingTodo = todo
+                selectedTodo = null
+                showEditDialog = true
+            },
+            onDelete = {
+                viewModel.deleteTodo(todo.id)
+                selectedTodo = null
+            },
+            onToggleComplete = { viewModel.toggleComplete(todo) },
+            onAddSession = { start, end, note ->
+                viewModel.addSession(todo.id, start, end, note)
+            },
+            onDeleteSession = { sessionId ->
+                viewModel.deleteSession(todo.id, sessionId)
+            }
+        )
+    }
+
+    // Add todo dialog
     if (showAddDialog) {
-        AddTodoDialog(
+        TodoFormDialog(
+            title = "New Todo",
+            todoLists = uiState.todoLists,
             onDismiss = { showAddDialog = false },
-            onConfirm = { title, priority ->
-                viewModel.createTodo(title, priority)
+            onConfirm = { todoTitle, description, priority, dueDate, todoListId ->
+                viewModel.createTodo(todoTitle, description, priority, dueDate, todoListId, null)
                 showAddDialog = false
             }
         )
+    }
+
+    // Edit todo dialog
+    if (showEditDialog) {
+        editingTodo?.let { todo ->
+            TodoFormDialog(
+                title = "Edit Todo",
+                todoLists = uiState.todoLists,
+                initialTitle = todo.title,
+                initialDescription = todo.description ?: "",
+                initialPriority = todo.priority,
+                initialDueDate = todo.dueDate ?: "",
+                initialTodoListId = todo.todoListId,
+                onDismiss = { showEditDialog = false; editingTodo = null },
+                onConfirm = { todoTitle, description, priority, dueDate, todoListId ->
+                    viewModel.updateTodo(
+                        id = todo.id,
+                        title = todoTitle,
+                        description = description.ifBlank { null },
+                        priority = priority,
+                        dueDate = dueDate.ifBlank { null },
+                        todoListId = todoListId
+                    )
+                    showEditDialog = false
+                    editingTodo = null
+                }
+            )
+        }
     }
 }
 
 @Composable
 private fun TodosList(
     todos: List<TodoResponse>,
+    onTap: (TodoResponse) -> Unit,
     onToggle: (TodoResponse) -> Unit,
     onDelete: (Int) -> Unit
 ) {
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         items(todos, key = { it.id }) { todo ->
-            TodoCard(todo = todo, onToggle = { onToggle(todo) }, onDelete = { onDelete(todo.id) })
+            TodoCard(
+                todo = todo,
+                onTap = { onTap(todo) },
+                onToggle = { onToggle(todo) },
+                onDelete = { onDelete(todo.id) }
+            )
         }
     }
 }
 
 @Composable
-private fun TodoCard(todo: TodoResponse, onToggle: () -> Unit, onDelete: () -> Unit) {
+private fun TodoCard(
+    todo: TodoResponse,
+    onTap: () -> Unit,
+    onToggle: () -> Unit,
+    onDelete: () -> Unit
+) {
     val priorityColor = when (todo.priority) {
         "high" -> PriorityHigh
         "low" -> PriorityLow
@@ -153,7 +297,8 @@ private fun TodoCard(todo: TodoResponse, onToggle: () -> Unit, onDelete: () -> U
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp),
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .clickable { onTap() },
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
@@ -191,6 +336,13 @@ private fun TodoCard(todo: TodoResponse, onToggle: () -> Unit, onDelete: () -> U
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                    if (todo.sessionCount > 0) {
+                        Text(
+                            text = "${todo.sessionCount} session(s)",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.tertiary
+                        )
+                    }
                 }
             }
             IconButton(onClick = onDelete) {
@@ -206,30 +358,55 @@ private fun TodoCard(todo: TodoResponse, onToggle: () -> Unit, onDelete: () -> U
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AddTodoDialog(
+private fun TodoFormDialog(
+    title: String,
+    todoLists: List<com.tuxplanner.app.data.model.TodoListResponse>,
+    initialTitle: String = "",
+    initialDescription: String = "",
+    initialPriority: String = "medium",
+    initialDueDate: String = "",
+    initialTodoListId: Int? = null,
     onDismiss: () -> Unit,
-    onConfirm: (String, String) -> Unit
+    onConfirm: (String, String, String, String, Int?) -> Unit
 ) {
-    var title by rememberSaveable { mutableStateOf("") }
-    var priority by rememberSaveable { mutableStateOf("medium") }
+    var todoTitle by rememberSaveable { mutableStateOf(initialTitle) }
+    var description by rememberSaveable { mutableStateOf(initialDescription) }
+    var priority by rememberSaveable { mutableStateOf(initialPriority) }
+    var dueDate by rememberSaveable { mutableStateOf(initialDueDate) }
+    var selectedListId by rememberSaveable { mutableStateOf(initialTodoListId) }
     var titleError by remember { mutableStateOf(false) }
     var priorityExpanded by remember { mutableStateOf(false) }
+    var listExpanded by remember { mutableStateOf(false) }
 
     val priorities = listOf("low", "medium", "high")
+    val selectedListName = todoLists.find { it.id == selectedListId }?.name ?: "None"
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("New Todo") },
+        title = { Text(title) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(380.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 OutlinedTextField(
-                    value = title,
-                    onValueChange = { title = it; titleError = false },
+                    value = todoTitle,
+                    onValueChange = { todoTitle = it; titleError = false },
                     label = { Text("Title *") },
                     isError = titleError,
                     supportingText = if (titleError) ({ Text("Required") }) else null,
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = description,
+                    onValueChange = { description = it },
+                    label = { Text("Description") },
+                    modifier = Modifier.fillMaxWidth(),
+                    maxLines = 3
                 )
                 ExposedDropdownMenuBox(
                     expanded = priorityExpanded,
@@ -257,15 +434,54 @@ private fun AddTodoDialog(
                         }
                     }
                 }
+                OutlinedTextField(
+                    value = dueDate,
+                    onValueChange = { dueDate = it },
+                    label = { Text("Due date (yyyy-MM-dd HH:mm)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                if (todoLists.isNotEmpty()) {
+                    ExposedDropdownMenuBox(
+                        expanded = listExpanded,
+                        onExpandedChange = { listExpanded = it }
+                    ) {
+                        OutlinedTextField(
+                            value = selectedListName,
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Todo List") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = listExpanded) },
+                            modifier = Modifier
+                                .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                                .fillMaxWidth()
+                        )
+                        ExposedDropdownMenu(
+                            expanded = listExpanded,
+                            onDismissRequest = { listExpanded = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("None") },
+                                onClick = { selectedListId = null; listExpanded = false }
+                            )
+                            todoLists.forEach { list ->
+                                DropdownMenuItem(
+                                    text = { Text(list.name) },
+                                    onClick = { selectedListId = list.id; listExpanded = false }
+                                )
+                            }
+                        }
+                    }
+                }
             }
         },
         confirmButton = {
             TextButton(
                 onClick = {
-                    if (title.isBlank()) { titleError = true; return@TextButton }
-                    onConfirm(title, priority)
+                    if (todoTitle.isBlank()) { titleError = true; return@TextButton }
+                    onConfirm(todoTitle, description, priority, dueDate, selectedListId)
                 }
-            ) { Text("Create") }
+            ) { Text("Save") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
     )

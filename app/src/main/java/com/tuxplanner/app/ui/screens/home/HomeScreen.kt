@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -20,6 +21,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.tuxplanner.app.ui.navigation.HomeTab
+import com.tuxplanner.app.ui.screens.dashboard.DashboardScreen
 import com.tuxplanner.app.ui.screens.events.EventsScreen
 import com.tuxplanner.app.ui.screens.settings.SettingsScreen
 import com.tuxplanner.app.ui.screens.todos.TodosScreen
@@ -31,10 +33,11 @@ private data class BottomNavItem(
 )
 
 @Composable
-fun HomeScreen(onLogout: () -> Unit) {
+fun HomeScreen(onLogout: () -> Unit, onNavigateToCalendarLists: () -> Unit) {
     val nestedNavController = rememberNavController()
 
     val navItems = listOf(
+        BottomNavItem(HomeTab.Dashboard, "Dashboard", Icons.Default.Home),
         BottomNavItem(HomeTab.Events, "Events", Icons.Default.CalendarMonth),
         BottomNavItem(HomeTab.Todos, "Todos", Icons.Default.CheckCircle),
         BottomNavItem(HomeTab.Settings, "Settings", Icons.Default.Settings)
@@ -67,10 +70,13 @@ fun HomeScreen(onLogout: () -> Unit) {
     ) { innerPadding ->
         NavHost(
             navController = nestedNavController,
-            startDestination = HomeTab.Events,
+            startDestination = HomeTab.Dashboard,
             modifier = Modifier.padding(innerPadding)
         ) {
-            composable(HomeTab.Events) { EventsScreen() }
+            composable(HomeTab.Dashboard) { DashboardScreen() }
+            composable(HomeTab.Events) {
+                EventsScreen(onNavigateToCalendarLists = onNavigateToCalendarLists)
+            }
             composable(HomeTab.Todos) { TodosScreen() }
             composable(HomeTab.Settings) { SettingsScreen(onLogout = onLogout) }
         }
