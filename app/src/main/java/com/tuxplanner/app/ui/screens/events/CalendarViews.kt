@@ -48,6 +48,10 @@ import java.time.format.FormatStyle
 import java.time.format.TextStyle
 import java.util.Locale
 
+private val FMT_MONTH_YEAR = DateTimeFormatter.ofPattern("MMMM yyyy")
+private val FMT_SHORT_DATE = DateTimeFormatter.ofPattern("d MMM")
+private val FMT_SECTION_HEADER = DateTimeFormatter.ofPattern("EEE, d MMM yyyy")
+
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
 internal fun formatEventDateTime(isoStart: String): String = runCatching {
@@ -157,7 +161,7 @@ fun MonthCalendarView(
                 Icon(Icons.Default.ChevronLeft, contentDescription = "Previous month")
             }
             Text(
-                text = displayedYearMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy")),
+                text = displayedYearMonth.format(FMT_MONTH_YEAR),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.weight(1f),
@@ -344,9 +348,8 @@ fun WeekCalendarView(
             IconButton(onClick = onPrevWeek) {
                 Icon(Icons.Default.ChevronLeft, contentDescription = "Previous week")
             }
-            val shortDate = DateTimeFormatter.ofPattern("d MMM")
             Text(
-                text = "${weekStart.format(shortDate)} – ${weekEnd.format(shortDate)} ${weekEnd.year}",
+                text = "${weekStart.format(FMT_SHORT_DATE)} – ${weekEnd.format(FMT_SHORT_DATE)} ${weekEnd.year}",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.weight(1f),
@@ -515,7 +518,7 @@ private fun DaySectionHeader(date: LocalDate, today: LocalDate, eventCount: Int)
             .padding(horizontal = 16.dp, vertical = 6.dp)
     ) {
         Text(
-            text = date.format(DateTimeFormatter.ofPattern("EEE, d MMM yyyy")),
+            text = date.format(FMT_SECTION_HEADER),
             style = MaterialTheme.typography.labelLarge,
             fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal,
             color = if (isToday) MaterialTheme.colorScheme.primary
