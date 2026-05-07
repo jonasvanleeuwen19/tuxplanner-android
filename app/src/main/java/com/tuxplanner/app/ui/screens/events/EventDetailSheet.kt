@@ -36,6 +36,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -189,7 +190,7 @@ fun EventDetailSheet(
                 }
                 if (selectedTodoId != null) {
                     OutlinedButton(
-                        onClick = { selectedTodoId?.let(onLinkTodo) },
+                        onClick = { selectedTodoId?.let { onLinkTodo(it) } },
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Icon(Icons.Default.Link, contentDescription = "Link task")
