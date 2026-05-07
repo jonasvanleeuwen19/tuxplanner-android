@@ -133,7 +133,7 @@ class ExternalCalendarViewModel(
         viewModelScope.launch {
             calendarListRepository.updateCalendarList(
                 listId,
-                CalendarListUpdate(isVisible = !isVisible)
+                CalendarListUpdate(isVisible = isVisible)
             )
             refresh()
         }

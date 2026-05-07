@@ -26,7 +26,9 @@ class IcalFeedRepository(private val client: ApiClient) {
         try {
             val response = client.getService().createIcalFeed(body)
             if (response.isSuccessful) {
-                ApiResult.Success(response.body()!!)
+                val bodyResult = response.body()
+                if (bodyResult != null) ApiResult.Success(bodyResult)
+                else ApiResult.Error("Empty response body", response.code())
             } else {
                 ApiResult.Error(response.message(), response.code())
             }
@@ -39,7 +41,9 @@ class IcalFeedRepository(private val client: ApiClient) {
         try {
             val response = client.getService().updateIcalFeed(id, body)
             if (response.isSuccessful) {
-                ApiResult.Success(response.body()!!)
+                val bodyResult = response.body()
+                if (bodyResult != null) ApiResult.Success(bodyResult)
+                else ApiResult.Error("Empty response body", response.code())
             } else {
                 ApiResult.Error(response.message(), response.code())
             }
@@ -65,7 +69,9 @@ class IcalFeedRepository(private val client: ApiClient) {
         try {
             val response = client.getService().syncIcalFeed(id)
             if (response.isSuccessful) {
-                ApiResult.Success(response.body()!!)
+                val bodyResult = response.body()
+                if (bodyResult != null) ApiResult.Success(bodyResult)
+                else ApiResult.Error("Empty response body", response.code())
             } else {
                 ApiResult.Error(response.message(), response.code())
             }

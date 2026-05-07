@@ -321,6 +321,8 @@ private fun AddSessionDialog(
     var step by rememberSaveable { mutableStateOf(1) }
     var selectedDates by remember { mutableStateOf(setOf<String>()) }
     var month by remember { mutableStateOf(YearMonth.now()) }
+    var startHour by rememberSaveable { mutableStateOf("9") }
+    var startMinute by rememberSaveable { mutableStateOf("0") }
     var defaultHours by rememberSaveable { mutableStateOf("1") }
     var defaultMinutes by rememberSaveable { mutableStateOf("0") }
     var note by rememberSaveable { mutableStateOf("") }
@@ -375,6 +377,22 @@ private fun AddSessionDialog(
                 } else {
                     Text("${selectedDates.size} day(s) selected")
                     OutlinedTextField(
+                        value = startHour,
+                        onValueChange = { startHour = it.filter(Char::isDigit).take(2) },
+                        label = { Text("Start hour (0-23)") },
+                        singleLine = true,
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = startMinute,
+                        onValueChange = { startMinute = it.filter(Char::isDigit).take(2) },
+                        label = { Text("Start minute (0-59)") },
+                        singleLine = true,
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
                         value = defaultHours,
                         onValueChange = { defaultHours = it.filter(Char::isDigit) },
                         label = { Text("Hours") },
@@ -410,13 +428,21 @@ private fun AddSessionDialog(
                     }
                     val hours = defaultHours.toIntOrNull() ?: 0
                     val minutes = defaultMinutes.toIntOrNull() ?: 0
+                    val startHourInt = startHour.toIntOrNull() ?: -1
+                    val startMinuteInt = startMinute.toIntOrNull() ?: -1
                     val totalMinutes = hours * 60 + minutes
+                    if (startHourInt !in 0..23 || startMinuteInt !in 0..59) {
+                        error = "Choose a valid start time"
+                        return@TextButton
+                    }
                     if (totalMinutes <= 0) {
                         error = "Please set at least 1 minute of work time"
                         return@TextButton
                     }
                     val sessions = selectedDates.sorted().map { date ->
-                        val start = LocalDateTime.parse("${date}T00:00:00")
+                        val start = LocalDateTime.parse(
+                            "${date}T${startHourInt.toString().padStart(2, '0')}:${startMinuteInt.toString().padStart(2, '0')}:00"
+                        )
                         val end = start.plusMinutes(totalMinutes.toLong())
                         SessionDraft(
                             start = start.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),

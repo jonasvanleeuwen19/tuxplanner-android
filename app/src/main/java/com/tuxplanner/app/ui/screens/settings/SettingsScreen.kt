@@ -303,7 +303,7 @@ private fun ExternalCalendarPage(
                                     TextButton(onClick = { onSetListColor(list.id, nextColor(list.color)) }) { Text("Color") }
                                     Switch(
                                         checked = list.isVisible,
-                                        onCheckedChange = { onToggleListVisibility(list.id, list.isVisible) }
+                                        onCheckedChange = { checked -> onToggleListVisibility(list.id, checked) }
                                     )
                                 }
                             }
