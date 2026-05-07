@@ -164,14 +164,14 @@ private fun SettingsRootPage(
     Column(modifier = modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Card(onClick = onOpenServerAndAccounts, modifier = Modifier.fillMaxWidth()) {
             Row(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-                Icon(Icons.Default.Dns, contentDescription = null)
+                Icon(Icons.Default.Dns, contentDescription = "Server and accounts")
                 Spacer(Modifier.weight(1f))
                 Text("Server and Accounts")
             }
         }
         Card(onClick = onOpenExternalCalendar, modifier = Modifier.fillMaxWidth()) {
             Row(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-                Icon(Icons.Default.CloudSync, contentDescription = null)
+                Icon(Icons.Default.CloudSync, contentDescription = "External calendar")
                 Spacer(Modifier.weight(1f))
                 Text("External Calendar")
             }
@@ -286,11 +286,14 @@ private fun ExternalCalendarPage(
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 TextButton(onClick = { onSync(feed.id) }) { Text(if (uiState.syncingFeedId == feed.id) "Syncing..." else "Sync") }
                                 TextButton(onClick = { onToggleFeed(feed) }) {
-                                    Icon(if (feed.isActive) Icons.Default.Pause else Icons.Default.PlayArrow, contentDescription = null)
+                                    Icon(
+                                        if (feed.isActive) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                        contentDescription = if (feed.isActive) "Pause feed" else "Resume feed"
+                                    )
                                     Text(if (feed.isActive) "Pause" else "Resume")
                                 }
                                 TextButton(onClick = { onDeleteFeed(feed.id) }) {
-                                    Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                                    Icon(Icons.Default.Delete, contentDescription = "Delete feed", tint = MaterialTheme.colorScheme.error)
                                     Text("Delete", color = MaterialTheme.colorScheme.error)
                                 }
                             }

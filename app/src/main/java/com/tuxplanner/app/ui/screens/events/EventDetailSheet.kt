@@ -190,7 +190,7 @@ fun EventDetailSheet(
                         onClick = { selectedTodoId?.let(onLinkTodo) },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Icon(Icons.Default.Link, contentDescription = null)
+                        Icon(Icons.Default.Link, contentDescription = "Link task")
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("Link task")
                     }
