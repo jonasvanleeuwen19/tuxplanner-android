@@ -361,7 +361,7 @@ private fun AddFeedDialog(
                         name.trim(),
                         url.trim(),
                         color.trim(),
-                        type.trim().lowercase(),
+                        type.trim(),
                         username.trim().ifBlank { null },
                         password.ifBlank { null }
                     )

@@ -351,7 +351,7 @@ private fun AddSessionDialog(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         TextButton(onClick = { month = month.minusMonths(1) }) { Text("Prev") }
                         Text(
-                            text = month.toString(),
+                            text = month.format(DateTimeFormatter.ofPattern("MMMM yyyy")),
                             style = MaterialTheme.typography.titleSmall,
                             modifier = Modifier.weight(1f)
                         )
@@ -462,6 +462,7 @@ private fun AddSessionDialog(
     )
 }
 
+// Internal helper used by the multi-step planner before persisting sessions.
 private data class SessionDraft(
     val start: String,
     val end: String?,

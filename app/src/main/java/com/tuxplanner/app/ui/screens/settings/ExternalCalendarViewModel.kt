@@ -71,7 +71,7 @@ class ExternalCalendarViewModel(
                 name = name,
                 url = url,
                 color = color,
-                feedType = feedType,
+                feedType = feedType.lowercase(),
                 caldavUsername = caldavUsername,
                 caldavPassword = caldavPassword
             ))) {
@@ -100,15 +100,19 @@ class ExternalCalendarViewModel(
 
     fun toggleFeed(feed: IcalFeedResponse) {
         viewModelScope.launch {
-            feedRepository.updateFeed(feed.id, IcalFeedUpdate(isActive = !feed.isActive))
-            refresh()
+            when (val result = feedRepository.updateFeed(feed.id, IcalFeedUpdate(isActive = !feed.isActive))) {
+                is ApiResult.Success -> refresh()
+                is ApiResult.Error -> _uiState.value = _uiState.value.copy(error = result.message)
+            }
         }
     }
 
     fun deleteFeed(feedId: Int) {
         viewModelScope.launch {
-            feedRepository.deleteFeed(feedId)
-            refresh()
+            when (val result = feedRepository.deleteFeed(feedId)) {
+                is ApiResult.Success -> refresh()
+                is ApiResult.Error -> _uiState.value = _uiState.value.copy(error = result.message)
+            }
         }
     }
 

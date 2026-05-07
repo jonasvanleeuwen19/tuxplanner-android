@@ -159,7 +159,9 @@ fun EventDetailSheet(
                     expanded = taskExpanded,
                     onExpandedChange = { taskExpanded = it }
                 ) {
-                    val selectedTaskName = availableTodos.find { it.id == selectedTodoId }?.title ?: "Select task to link"
+                    val selectedTaskName = remember(selectedTodoId, availableTodos) {
+                        availableTodos.find { it.id == selectedTodoId }?.title ?: "Select task to link"
+                    }
                     OutlinedTextField(
                         value = selectedTaskName,
                         onValueChange = {},
