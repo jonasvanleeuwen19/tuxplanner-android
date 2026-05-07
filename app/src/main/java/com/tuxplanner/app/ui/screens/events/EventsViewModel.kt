@@ -6,9 +6,12 @@ import com.tuxplanner.app.data.model.CalendarListResponse
 import com.tuxplanner.app.data.model.EventCreate
 import com.tuxplanner.app.data.model.EventResponse
 import com.tuxplanner.app.data.model.EventUpdate
+import com.tuxplanner.app.data.model.TodoResponse
+import com.tuxplanner.app.data.model.TodoUpdate
 import com.tuxplanner.app.data.repository.ApiResult
 import com.tuxplanner.app.data.repository.CalendarListRepository
 import com.tuxplanner.app.data.repository.EventRepository
+import com.tuxplanner.app.data.repository.TodoRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -28,12 +31,15 @@ data class EventsUiState(
     val viewType: CalendarViewType = CalendarViewType.Month,
     val selectedDate: LocalDate = LocalDate.now(),
     val displayedYearMonth: YearMonth = YearMonth.now(),
-    val displayedWeekStart: LocalDate = LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+    val displayedWeekStart: LocalDate = LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)),
+    val linkedTasks: List<TodoResponse> = emptyList(),
+    val allTodos: List<TodoResponse> = emptyList()
 )
 
 class EventsViewModel(
     private val eventRepository: EventRepository,
-    private val calendarListRepository: CalendarListRepository
+    private val calendarListRepository: CalendarListRepository,
+    private val todoRepository: TodoRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(EventsUiState())
@@ -48,19 +54,62 @@ class EventsViewModel(
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             val listsResult = calendarListRepository.getCalendarLists()
             val eventsResult = eventRepository.getEvents()
+            val todosResult = todoRepository.getTodos()
             val lists = if (listsResult is ApiResult.Success) listsResult.data else _uiState.value.calendarLists
+            val todos = if (todosResult is ApiResult.Success) todosResult.data else _uiState.value.allTodos
             when (eventsResult) {
                 is ApiResult.Success -> _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     events = eventsResult.data,
                     calendarLists = lists,
+                    allTodos = todos,
                     error = null
                 )
                 is ApiResult.Error -> _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     calendarLists = lists,
+                    allTodos = todos,
                     error = eventsResult.message
                 )
+            }
+        }
+    }
+
+    fun loadTasksForEvent(eventId: Int) {
+        viewModelScope.launch {
+            when (val result = todoRepository.getTodos(eventId = eventId)) {
+                is ApiResult.Success -> _uiState.value = _uiState.value.copy(linkedTasks = result.data)
+                is ApiResult.Error -> _uiState.value = _uiState.value.copy(linkedTasks = emptyList())
+            }
+        }
+    }
+
+    fun linkTaskToEvent(todoId: Int, eventId: Int) {
+        viewModelScope.launch {
+            when (val result = todoRepository.updateTodo(todoId, TodoUpdate(eventId = eventId))) {
+                is ApiResult.Success -> {
+                    _uiState.value = _uiState.value.copy(
+                        allTodos = _uiState.value.allTodos.map { if (it.id == todoId) result.data else it }
+                    )
+                    loadTasksForEvent(eventId)
+                    loadEvents()
+                }
+                is ApiResult.Error -> _uiState.value = _uiState.value.copy(error = result.message)
+            }
+        }
+    }
+
+    fun unlinkTask(todoId: Int, eventId: Int) {
+        viewModelScope.launch {
+            when (val result = todoRepository.updateTodo(todoId, TodoUpdate(eventId = null))) {
+                is ApiResult.Success -> {
+                    _uiState.value = _uiState.value.copy(
+                        allTodos = _uiState.value.allTodos.map { if (it.id == todoId) result.data else it }
+                    )
+                    loadTasksForEvent(eventId)
+                    loadEvents()
+                }
+                is ApiResult.Error -> _uiState.value = _uiState.value.copy(error = result.message)
             }
         }
     }
