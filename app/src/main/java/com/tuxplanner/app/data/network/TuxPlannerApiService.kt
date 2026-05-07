@@ -6,6 +6,9 @@ import com.tuxplanner.app.data.model.CalendarListUpdate
 import com.tuxplanner.app.data.model.EventCreate
 import com.tuxplanner.app.data.model.EventResponse
 import com.tuxplanner.app.data.model.EventUpdate
+import com.tuxplanner.app.data.model.IcalFeedCreate
+import com.tuxplanner.app.data.model.IcalFeedResponse
+import com.tuxplanner.app.data.model.IcalFeedUpdate
 import com.tuxplanner.app.data.model.MessageResponse
 import com.tuxplanner.app.data.model.SetupRequest
 import com.tuxplanner.app.data.model.SetupStatusResponse
@@ -157,4 +160,24 @@ interface TuxPlannerApiService {
         @Path("todoId") todoId: Int,
         @Path("sessionId") sessionId: Int
     ): Response<Unit>
+
+    // ── External Calendars ───────────────────────────────────
+
+    @GET("api/ical-feeds/")
+    suspend fun getIcalFeeds(): Response<List<IcalFeedResponse>>
+
+    @POST("api/ical-feeds/")
+    suspend fun createIcalFeed(@Body body: IcalFeedCreate): Response<IcalFeedResponse>
+
+    @PUT("api/ical-feeds/{id}")
+    suspend fun updateIcalFeed(
+        @Path("id") id: Int,
+        @Body body: IcalFeedUpdate
+    ): Response<IcalFeedResponse>
+
+    @DELETE("api/ical-feeds/{id}")
+    suspend fun deleteIcalFeed(@Path("id") id: Int): Response<Unit>
+
+    @POST("api/ical-feeds/{id}/sync")
+    suspend fun syncIcalFeed(@Path("id") id: Int): Response<IcalFeedResponse>
 }

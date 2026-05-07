@@ -19,11 +19,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -56,11 +56,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tuxplanner.app.TuxPlannerApp
 import com.tuxplanner.app.data.model.TodoResponse
+import com.tuxplanner.app.ui.common.MarkdownEditorField
 import com.tuxplanner.app.ui.theme.PriorityHigh
 import com.tuxplanner.app.ui.theme.PriorityLow
 import com.tuxplanner.app.ui.theme.PriorityMedium
@@ -78,7 +81,8 @@ fun TodosScreen() {
                 TodosViewModel(
                     container.todoRepository,
                     container.todoListRepository,
-                    container.taskSessionRepository
+                    container.taskSessionRepository,
+                    container.eventRepository
                 ) as T
         }
     )
@@ -200,6 +204,7 @@ fun TodosScreen() {
             todo = todo,
             sessions = uiState.sessions,
             isLoadingSessions = uiState.isLoadingSessions,
+            isEditable = todo.eventId == null || !uiState.externalEventIds.contains(todo.eventId),
             onDismiss = { selectedTodo = null },
             onEdit = {
                 editingTodo = todo
@@ -381,14 +386,38 @@ private fun TodoFormDialog(
     val priorities = listOf("low", "medium", "high")
     val selectedListName = todoLists.find { it.id == selectedListId }?.name ?: "None"
 
-    AlertDialog(
+    Dialog(
         onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = {
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text(title) },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    ),
+                    navigationIcon = {
+                        IconButton(onClick = onDismiss) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "Close")
+                        }
+                    },
+                    actions = {
+                        TextButton(
+                            onClick = {
+                                if (todoTitle.isBlank()) { titleError = true; return@TextButton }
+                                onConfirm(todoTitle, description, priority, dueDate, selectedListId)
+                            }
+                        ) { Text("Save") }
+                    }
+                )
+            }
+        ) { innerPadding ->
             Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(380.dp)
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .padding(16.dp)
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
@@ -401,12 +430,10 @@ private fun TodoFormDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
-                OutlinedTextField(
+                MarkdownEditorField(
+                    label = "Description",
                     value = description,
-                    onValueChange = { description = it },
-                    label = { Text("Description") },
-                    modifier = Modifier.fillMaxWidth(),
-                    maxLines = 3
+                    onValueChange = { description = it }
                 )
                 ExposedDropdownMenuBox(
                     expanded = priorityExpanded,
@@ -474,17 +501,8 @@ private fun TodoFormDialog(
                     }
                 }
             }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    if (todoTitle.isBlank()) { titleError = true; return@TextButton }
-                    onConfirm(todoTitle, description, priority, dueDate, selectedListId)
-                }
-            ) { Text("Save") }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
-    )
+        }
+    }
 }
 
 @Composable

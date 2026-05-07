@@ -9,6 +9,7 @@ import com.tuxplanner.app.data.model.TodoListResponse
 import com.tuxplanner.app.data.model.TodoResponse
 import com.tuxplanner.app.data.model.TodoUpdate
 import com.tuxplanner.app.data.repository.ApiResult
+import com.tuxplanner.app.data.repository.EventRepository
 import com.tuxplanner.app.data.repository.TaskSessionRepository
 import com.tuxplanner.app.data.repository.TodoListRepository
 import com.tuxplanner.app.data.repository.TodoRepository
@@ -24,13 +25,15 @@ data class TodosUiState(
     val isLoadingSessions: Boolean = false,
     val filter: String = "all",
     val selectedListId: Int? = null,
-    val error: String? = null
+    val error: String? = null,
+    val externalEventIds: Set<Int> = emptySet()
 )
 
 class TodosViewModel(
     private val todoRepository: TodoRepository,
     private val todoListRepository: TodoListRepository,
-    private val taskSessionRepository: TaskSessionRepository
+    private val taskSessionRepository: TaskSessionRepository,
+    private val eventRepository: EventRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(TodosUiState())
@@ -45,17 +48,25 @@ class TodosViewModel(
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             val listsResult = todoListRepository.getTodoLists()
             val todosResult = todoRepository.getTodos()
+            val eventsResult = eventRepository.getEvents()
             val lists = if (listsResult is ApiResult.Success) listsResult.data else _uiState.value.todoLists
+            val externalEventIds = if (eventsResult is ApiResult.Success) {
+                eventsResult.data.filter { it.source == "ical" }.map { it.id }.toSet()
+            } else {
+                _uiState.value.externalEventIds
+            }
             when (todosResult) {
                 is ApiResult.Success -> _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     todos = todosResult.data,
                     todoLists = lists,
+                    externalEventIds = externalEventIds,
                     error = null
                 )
                 is ApiResult.Error -> _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     todoLists = lists,
+                    externalEventIds = externalEventIds,
                     error = todosResult.message
                 )
             }
@@ -96,7 +107,8 @@ class TodosViewModel(
         priority: String? = null,
         dueDate: String? = null,
         todoListId: Int? = null,
-        completed: Boolean? = null
+        completed: Boolean? = null,
+        eventId: Int? = null
     ) {
         viewModelScope.launch {
             val update = TodoUpdate(
@@ -105,7 +117,8 @@ class TodosViewModel(
                 completed = completed,
                 priority = priority,
                 dueDate = dueDate,
-                todoListId = todoListId
+                todoListId = todoListId,
+                eventId = eventId
             )
             when (val result = todoRepository.updateTodo(id, update)) {
                 is ApiResult.Success -> {

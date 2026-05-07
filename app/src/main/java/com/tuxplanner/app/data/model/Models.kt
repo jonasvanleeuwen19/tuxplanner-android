@@ -29,6 +29,7 @@ data class CalendarListResponse(
     val isVisible: Boolean = true,
     val isAuto: Boolean = false,
     val icalFeedId: Int? = null,
+    val caldavCalendarName: String? = null,
     val createdAt: String = ""
 )
 
@@ -106,7 +107,8 @@ data class TodoUpdate(
     val priority: String? = null,
     val dueDate: String? = null,
     val todoListId: Int? = null,
-    val category: String? = null
+    val category: String? = null,
+    val eventId: Int? = null
 )
 
 // ── Todo List ─────────────────────────────────────────────────
@@ -164,4 +166,37 @@ data class TaskSessionUpdate(
     val start: String? = null,
     val end: String? = null,
     val note: String? = null
+)
+
+// ── External Calendar Feed ──────────────────────────────────
+
+data class IcalFeedResponse(
+    val id: Int = 0,
+    val name: String = "",
+    val url: String = "",
+    val isActive: Boolean = true,
+    val feedType: String = "ical",
+    val caldavUsername: String? = null,
+    val caldavPassword: String? = null,
+    val lastSynced: String? = null,
+    val createdAt: String = "",
+    val calendarListId: Int? = null
+)
+
+data class IcalFeedCreate(
+    val name: String,
+    val url: String,
+    val color: String = "#3b82f6",
+    val feedType: String = "ical",
+    val caldavUsername: String? = null,
+    val caldavPassword: String? = null
+)
+
+data class IcalFeedUpdate(
+    val name: String? = null,
+    val url: String? = null,
+    val isActive: Boolean? = null,
+    val feedType: String? = null,
+    val caldavUsername: String? = null,
+    val caldavPassword: String? = null
 )

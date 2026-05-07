@@ -15,12 +15,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarViewMonth
 import androidx.compose.material.icons.filled.CalendarViewWeek
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.ViewAgenda
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
@@ -42,6 +42,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -51,6 +52,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -59,6 +62,7 @@ import com.tuxplanner.app.data.model.CalendarListResponse
 import com.tuxplanner.app.data.model.EventCreate
 import com.tuxplanner.app.data.model.EventResponse
 import com.tuxplanner.app.data.model.EventUpdate
+import com.tuxplanner.app.ui.common.MarkdownEditorField
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
@@ -72,7 +76,7 @@ fun EventsScreen(onNavigateToCalendarLists: () -> Unit = {}) {
         factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                EventsViewModel(container.eventRepository, container.calendarListRepository) as T
+                EventsViewModel(container.eventRepository, container.calendarListRepository, container.todoRepository) as T
         }
     )
 
@@ -85,6 +89,10 @@ fun EventsScreen(onNavigateToCalendarLists: () -> Unit = {}) {
     val filteredEvents = remember(uiState.events, uiState.filterCalendarListId) {
         if (uiState.filterCalendarListId == null) uiState.events
         else uiState.events.filter { it.calendarListId == uiState.filterCalendarListId }
+    }
+
+    LaunchedEffect(selectedEvent?.id) {
+        selectedEvent?.id?.let { viewModel.loadTasksForEvent(it) }
     }
 
     Scaffold(
@@ -225,6 +233,8 @@ fun EventsScreen(onNavigateToCalendarLists: () -> Unit = {}) {
         EventDetailSheet(
             event = event,
             calendarLists = uiState.calendarLists,
+            linkedTodos = uiState.linkedTasks,
+            availableTodos = uiState.allTodos.filter { it.eventId == null || it.eventId == event.id },
             onDismiss = { selectedEvent = null },
             onEdit = {
                 editingEvent = event
@@ -234,7 +244,9 @@ fun EventsScreen(onNavigateToCalendarLists: () -> Unit = {}) {
             onDelete = {
                 viewModel.deleteEvent(event.id)
                 selectedEvent = null
-            }
+            },
+            onLinkTodo = { todoId -> viewModel.linkTaskToEvent(todoId, event.id) },
+            onUnlinkTodo = { todoId -> viewModel.unlinkTask(todoId, event.id) }
         )
     }
 
@@ -348,14 +360,39 @@ private fun EventFormDialog(
 
     val selectedCalendarName = calendarLists.find { it.id == selectedListId }?.name ?: "None"
 
-    AlertDialog(
+    Dialog(
         onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = {
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text(title) },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    ),
+                    navigationIcon = {
+                        IconButton(onClick = onDismiss) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "Close")
+                        }
+                    },
+                    actions = {
+                        TextButton(onClick = {
+                            if (eventTitle.isBlank()) { titleError = true; return@TextButton }
+                            onConfirm(
+                                eventTitle, description, location,
+                                startStr, endStr, allDay, colorStr, selectedListId
+                            )
+                        }) { Text("Save") }
+                    }
+                )
+            }
+        ) { innerPadding ->
             Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(400.dp)
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .padding(16.dp)
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
@@ -369,12 +406,10 @@ private fun EventFormDialog(
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                     modifier = Modifier.fillMaxWidth()
                 )
-                OutlinedTextField(
+                MarkdownEditorField(
+                    label = "Description",
                     value = description,
-                    onValueChange = { description = it },
-                    label = { Text("Description") },
-                    modifier = Modifier.fillMaxWidth(),
-                    maxLines = 3
+                    onValueChange = { description = it }
                 )
                 OutlinedTextField(
                     value = location,
@@ -446,20 +481,8 @@ private fun EventFormDialog(
                     }
                 }
             }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    if (eventTitle.isBlank()) { titleError = true; return@TextButton }
-                    onConfirm(
-                        eventTitle, description, location,
-                        startStr, endStr, allDay, colorStr, selectedListId
-                    )
-                }
-            ) { Text("Save") }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
-    )
+        }
+    }
 }
 
 @Composable

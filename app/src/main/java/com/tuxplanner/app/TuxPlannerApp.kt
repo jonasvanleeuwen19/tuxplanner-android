@@ -6,6 +6,7 @@ import com.tuxplanner.app.data.preferences.AppPreferences
 import com.tuxplanner.app.data.repository.AuthRepository
 import com.tuxplanner.app.data.repository.CalendarListRepository
 import com.tuxplanner.app.data.repository.EventRepository
+import com.tuxplanner.app.data.repository.IcalFeedRepository
 import com.tuxplanner.app.data.repository.TaskSessionRepository
 import com.tuxplanner.app.data.repository.TodoListRepository
 import com.tuxplanner.app.data.repository.TodoRepository
@@ -19,6 +20,7 @@ class AppContainer(app: Application) {
     val calendarListRepository = CalendarListRepository(apiClient)
     val todoListRepository = TodoListRepository(apiClient)
     val taskSessionRepository = TaskSessionRepository(apiClient)
+    val icalFeedRepository = IcalFeedRepository(apiClient)
 }
 
 class TuxPlannerApp : Application() {
