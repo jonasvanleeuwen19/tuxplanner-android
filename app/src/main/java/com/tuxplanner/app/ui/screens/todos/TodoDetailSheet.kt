@@ -320,20 +320,60 @@ private fun AddSessionDialog(
     onConfirm: (List<SessionDraft>) -> Unit
 ) {
     var step by rememberSaveable { mutableStateOf(1) }
-    var selectedDates by remember { mutableStateOf(setOf<String>()) }
+    var selectedDates by remember { mutableStateOf(setOf<java.time.LocalDate>()) }
     var month by remember { mutableStateOf(YearMonth.now()) }
-    var startHour by rememberSaveable { mutableStateOf("9") }
-    var startMinute by rememberSaveable { mutableStateOf("0") }
-    var defaultHours by rememberSaveable { mutableStateOf("1") }
-    var defaultMinutes by rememberSaveable { mutableStateOf("0") }
-    var note by rememberSaveable { mutableStateOf("") }
-    var error by rememberSaveable { mutableStateOf<String?>(null) }
+    var dayConfigs by remember { mutableStateOf<Map<java.time.LocalDate, SessionDayConfig>>(emptyMap()) }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Plan Work Sessions") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+    Dialog(onDismissRequest = onDismiss) {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text("Plan Work Sessions") },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+                    navigationIcon = {
+                        TextButton(onClick = { if (step == 2) step = 1 else onDismiss() }) {
+                            Text(if (step == 2) "Back" else "Cancel")
+                        }
+                    },
+                    actions = {
+                        TextButton(onClick = {
+                            if (step == 1) {
+                                if (selectedDates.isNotEmpty()) {
+                                    dayConfigs = selectedDates.sorted().associateWith { date ->
+                                        dayConfigs[date] ?: SessionDayConfig()
+                                    }
+                                    step = 2
+                                }
+                                return@TextButton
+                            }
+
+                            val sessions = selectedDates.sorted().mapNotNull { date ->
+                                val cfg = dayConfigs[date] ?: SessionDayConfig()
+                                val startTime = runCatching { java.time.LocalTime.parse(cfg.startTime) }.getOrNull() ?: return@mapNotNull null
+                                val endTime = runCatching { java.time.LocalTime.parse(cfg.endTime) }.getOrNull() ?: return@mapNotNull null
+                                val start = date.atTime(startTime)
+                                val end = date.atTime(endTime)
+                                if (!end.isAfter(start)) return@mapNotNull null
+                                SessionDraft(
+                                    start = start.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
+                                    end = end.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
+                                    note = cfg.note.ifBlank { null }
+                                )
+                            }
+                            if (sessions.isNotEmpty()) onConfirm(sessions)
+                        }) { Text(if (step == 1) "Next" else "Add") }
+                    }
+                )
+            }
+        ) { innerPadding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(innerPadding)
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
                 SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
                     SegmentedButton(
                         shape = androidx.compose.material3.SegmentedButtonDefaults.itemShape(index = 0, count = 2),
@@ -345,7 +385,7 @@ private fun AddSessionDialog(
                         onClick = { if (selectedDates.isNotEmpty()) step = 2 },
                         selected = step == 2,
                         enabled = selectedDates.isNotEmpty()
-                    ) { Text("2. Duration") }
+                    ) { Text("2. Per day") }
                 }
 
                 if (step == 1) {
@@ -354,116 +394,94 @@ private fun AddSessionDialog(
                         Text(
                             text = month.format(DateTimeFormatter.ofPattern("MMMM yyyy")),
                             style = MaterialTheme.typography.titleSmall,
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
                         )
                         TextButton(onClick = { month = month.plusMonths(1) }) { Text("Next") }
                     }
-                    val daysInMonth = month.lengthOfMonth()
-                    Row(
-                        modifier = Modifier.horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        for (day in 1..daysInMonth) {
-                            val date = month.atDay(day).toString()
-                            val selected = selectedDates.contains(date)
-                            FilterChip(
-                                selected = selected,
-                                onClick = {
-                                    selectedDates = if (selected) selectedDates - date else selectedDates + date
-                                },
-                                label = { Text(day.toString()) }
-                            )
+                    CalendarSelectionGrid(
+                        month = month,
+                        selectedDates = selectedDates,
+                        onToggleDate = { date ->
+                            selectedDates = if (selectedDates.contains(date)) selectedDates - date else selectedDates + date
+                        }
+                    )
+                } else {
+                    selectedDates.sorted().forEach { date ->
+                        val cfg = dayConfigs[date] ?: SessionDayConfig()
+                        androidx.compose.material3.Card(modifier = Modifier.fillMaxWidth()) {
+                            Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(date.toString(), style = MaterialTheme.typography.titleSmall)
+                                com.tuxplanner.app.ui.common.TimePickerField(
+                                    label = "Start time",
+                                    value = cfg.startTime,
+                                    onValueChange = { value -> dayConfigs = dayConfigs + (date to cfg.copy(startTime = value)) }
+                                )
+                                com.tuxplanner.app.ui.common.TimePickerField(
+                                    label = "End time",
+                                    value = cfg.endTime,
+                                    onValueChange = { value -> dayConfigs = dayConfigs + (date to cfg.copy(endTime = value)) }
+                                )
+                                OutlinedTextField(
+                                    value = cfg.note,
+                                    onValueChange = { value -> dayConfigs = dayConfigs + (date to cfg.copy(note = value)) },
+                                    label = { Text("Note (optional)") },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    maxLines = 3
+                                )
+                            }
                         }
                     }
-                } else {
-                    Text("${selectedDates.size} day(s) selected")
-                    OutlinedTextField(
-                        value = startHour,
-                        onValueChange = { startHour = it.filter(Char::isDigit).take(2) },
-                        label = { Text("Start hour (0-23)") },
-                        singleLine = true,
-                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = startMinute,
-                        onValueChange = { startMinute = it.filter(Char::isDigit).take(2) },
-                        label = { Text("Start minute (0-59)") },
-                        singleLine = true,
-                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = defaultHours,
-                        onValueChange = { defaultHours = it.filter(Char::isDigit) },
-                        label = { Text("Hours") },
-                        singleLine = true,
-                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = defaultMinutes,
-                        onValueChange = { defaultMinutes = it.filter(Char::isDigit) },
-                        label = { Text("Minutes") },
-                        singleLine = true,
-                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = note,
-                        onValueChange = { note = it },
-                        label = { Text("Note (optional)") },
-                        modifier = Modifier.fillMaxWidth(),
-                        maxLines = 3
-                    )
-                    error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 }
             }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    if (step == 1) {
-                        if (selectedDates.isNotEmpty()) step = 2
-                        return@TextButton
-                    }
-                    val hours = defaultHours.toIntOrNull() ?: 0
-                    val minutes = defaultMinutes.toIntOrNull() ?: 0
-                    val startHourInt = startHour.toIntOrNull() ?: -1
-                    val startMinuteInt = startMinute.toIntOrNull() ?: -1
-                    val totalMinutes = hours * 60 + minutes
-                    if (startHourInt !in 0..23 || startMinuteInt !in 0..59) {
-                        error = "Choose a valid start time"
-                        return@TextButton
-                    }
-                    if (totalMinutes <= 0) {
-                        error = "Please set at least 1 minute of work time"
-                        return@TextButton
-                    }
-                    val sessions = selectedDates.sorted().map { date ->
-                        val start = LocalDateTime.parse(
-                            "${date}T${startHourInt.toString().padStart(2, '0')}:${startMinuteInt.toString().padStart(2, '0')}:00"
-                        )
-                        val end = start.plusMinutes(totalMinutes.toLong())
-                        SessionDraft(
-                            start = start.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
-                            end = end.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
-                            note = note.ifBlank { null }
-                        )
-                    }
-                    onConfirm(sessions)
-                }
-            ) { Text(if (step == 1) "Next" else "Add") }
-        },
-        dismissButton = {
-            TextButton(onClick = {
-                if (step == 2) step = 1 else onDismiss()
-            }) { Text(if (step == 2) "Back" else "Cancel") }
         }
-    )
+    }
 }
 
-// Internal helper used by the multi-step planner before persisting sessions.
+@Composable
+private fun CalendarSelectionGrid(
+    month: YearMonth,
+    selectedDates: Set<java.time.LocalDate>,
+    onToggleDate: (java.time.LocalDate) -> Unit
+) {
+    val firstDay = month.atDay(1)
+    val startOffset = firstDay.dayOfWeek.value - 1
+    val totalDays = month.lengthOfMonth()
+    val totalCells = startOffset + totalDays
+    val rows = (totalCells + 6) / 7
+
+    Row(modifier = Modifier.fillMaxWidth()) {
+        listOf("Mo", "Tu", "We", "Th", "Fr", "Sa", "Su").forEach { label ->
+            Text(label, modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+        }
+    }
+    repeat(rows) { row ->
+        Row(modifier = Modifier.fillMaxWidth()) {
+            repeat(7) { col ->
+                val idx = row * 7 + col
+                val day = idx - startOffset + 1
+                if (day !in 1..totalDays) {
+                    Spacer(modifier = Modifier.weight(1f).height(40.dp))
+                } else {
+                    val date = month.atDay(day)
+                    FilterChip(
+                        selected = selectedDates.contains(date),
+                        onClick = { onToggleDate(date) },
+                        label = { Text(day.toString()) },
+                        modifier = Modifier.weight(1f).padding(2.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+private data class SessionDayConfig(
+    val startTime: String = "09:00",
+    val endTime: String = "10:00",
+    val note: String = ""
+)
+
 private data class SessionDraft(
     val start: String,
     val end: String?,

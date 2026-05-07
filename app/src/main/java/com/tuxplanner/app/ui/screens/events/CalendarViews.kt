@@ -487,9 +487,14 @@ fun AgendaCalendarView(
             .mapKeys { it.key!! }
             .toSortedMap()
     }
+    val orderedDates = remember(eventsByDate, today) {
+        val allDates = eventsByDate.keys.toList()
+        allDates.filter { !it.isBefore(today) } + allDates.filter { it.isBefore(today) }
+    }
 
     LazyColumn(modifier = Modifier.fillMaxSize()) {
-        eventsByDate.forEach { (date, dayEvents) ->
+        orderedDates.forEach { date ->
+            val dayEvents = eventsByDate[date].orEmpty()
             item(key = "header_$date") {
                 DaySectionHeader(date = date, today = today, eventCount = dayEvents.size)
             }

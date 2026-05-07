@@ -63,6 +63,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tuxplanner.app.TuxPlannerApp
 import com.tuxplanner.app.data.model.TodoResponse
+import com.tuxplanner.app.ui.common.DateTimePickerField
 import com.tuxplanner.app.ui.common.MarkdownEditorField
 import com.tuxplanner.app.ui.theme.PriorityHigh
 import com.tuxplanner.app.ui.theme.PriorityLow
@@ -98,7 +99,7 @@ fun TodosScreen() {
         selectedTodo?.let { viewModel.loadSessions(it.id) }
     }
 
-    val filteredTodos = remember(uiState.todos, uiState.filter, uiState.selectedListId) {
+    val filteredTodos = remember(uiState.todos, uiState.filter, uiState.sort, uiState.selectedListId) {
         uiState.todos.filter { todo ->
             val listMatch = uiState.selectedListId == null || todo.todoListId == uiState.selectedListId
             val filterMatch = when (uiState.filter) {
@@ -106,7 +107,12 @@ fun TodosScreen() {
                 "completed" -> todo.completed
                 else -> true
             }
-            listMatch && filterMatch
+            val sortMatch = when (uiState.sort) {
+                "planned" -> !todo.dueDate.isNullOrBlank()
+                "unplanned" -> todo.dueDate.isNullOrBlank()
+                else -> true
+            }
+            listMatch && filterMatch && sortMatch
         }
     }
 
@@ -175,6 +181,20 @@ fun TodosScreen() {
                             label = { Text(list.name) }
                         )
                     }
+                }
+            }
+            Row(
+                modifier = Modifier
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                listOf("all" to "All", "planned" to "Planned", "unplanned" to "Unplanned").forEach { (value, label) ->
+                    FilterChip(
+                        selected = uiState.sort == value,
+                        onClick = { viewModel.setSort(value) },
+                        label = { Text(label) }
+                    )
                 }
             }
 
@@ -461,12 +481,11 @@ private fun TodoFormDialog(
                         }
                     }
                 }
-                OutlinedTextField(
+                DateTimePickerField(
+                    label = "Due date (optional)",
                     value = dueDate,
                     onValueChange = { dueDate = it },
-                    label = { Text("Due date (yyyy-MM-dd HH:mm)") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    allowClear = true
                 )
                 if (todoLists.isNotEmpty()) {
                     ExposedDropdownMenuBox(

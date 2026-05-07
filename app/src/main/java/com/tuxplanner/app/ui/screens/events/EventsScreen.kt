@@ -17,7 +17,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarViewMonth
-import androidx.compose.material.icons.filled.CalendarViewWeek
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.ViewAgenda
@@ -62,7 +61,10 @@ import com.tuxplanner.app.data.model.CalendarListResponse
 import com.tuxplanner.app.data.model.EventCreate
 import com.tuxplanner.app.data.model.EventResponse
 import com.tuxplanner.app.data.model.EventUpdate
+import com.tuxplanner.app.ui.common.DateTimePickerField
 import com.tuxplanner.app.ui.common.MarkdownEditorField
+import com.tuxplanner.app.ui.common.OsmLocationService
+import com.tuxplanner.app.ui.common.OsmSuggestion
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
@@ -86,9 +88,13 @@ fun EventsScreen(onNavigateToCalendarLists: () -> Unit = {}) {
     var showEditDialog by remember { mutableStateOf(false) }
     var editingEvent by remember { mutableStateOf<EventResponse?>(null) }
 
-    val filteredEvents = remember(uiState.events, uiState.filterCalendarListId) {
-        if (uiState.filterCalendarListId == null) uiState.events
-        else uiState.events.filter { it.calendarListId == uiState.filterCalendarListId }
+    val filteredEvents = remember(uiState.events, uiState.filterCalendarListId, uiState.calendarLists) {
+        val visibleListIds = uiState.calendarLists.filter { it.isVisible }.map { it.id }.toSet()
+        uiState.events.filter { event ->
+            val visibleMatch = event.calendarListId == null || visibleListIds.contains(event.calendarListId)
+            val filterMatch = uiState.filterCalendarListId == null || event.calendarListId == uiState.filterCalendarListId
+            visibleMatch && filterMatch
+        }
     }
 
     LaunchedEffect(selectedEvent?.id) {
@@ -111,17 +117,6 @@ fun EventsScreen(onNavigateToCalendarLists: () -> Unit = {}) {
                             Icons.Default.CalendarViewMonth,
                             contentDescription = "Month view",
                             tint = if (uiState.viewType == CalendarViewType.Month)
-                                MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                    IconButton(
-                        onClick = { viewModel.setViewType(CalendarViewType.Week) }
-                    ) {
-                        Icon(
-                            Icons.Default.CalendarViewWeek,
-                            contentDescription = "Week view",
-                            tint = if (uiState.viewType == CalendarViewType.Week)
                                 MaterialTheme.colorScheme.primary
                             else MaterialTheme.colorScheme.onSurface
                         )
@@ -207,15 +202,6 @@ fun EventsScreen(onNavigateToCalendarLists: () -> Unit = {}) {
                             onTapEvent = { selectedEvent = it },
                             onDeleteEvent = { viewModel.deleteEvent(it) }
                         )
-                        CalendarViewType.Week -> WeekCalendarView(
-                            events = filteredEvents,
-                            calendarLists = uiState.calendarLists,
-                            weekStart = uiState.displayedWeekStart,
-                            onPrevWeek = { viewModel.prevWeek() },
-                            onNextWeek = { viewModel.nextWeek() },
-                            onTapEvent = { selectedEvent = it },
-                            onDeleteEvent = { viewModel.deleteEvent(it) }
-                        )
                         CalendarViewType.List -> AgendaCalendarView(
                             events = filteredEvents,
                             calendarLists = uiState.calendarLists,
@@ -234,7 +220,7 @@ fun EventsScreen(onNavigateToCalendarLists: () -> Unit = {}) {
             event = event,
             calendarLists = uiState.calendarLists,
             linkedTodos = uiState.linkedTasks,
-            availableTodos = uiState.allTodos.filter { it.eventId == null || it.eventId == event.id },
+            allTodos = uiState.allTodos,
             onDismiss = { selectedEvent = null },
             onEdit = {
                 editingEvent = event
@@ -418,19 +404,18 @@ private fun EventFormDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
-                OutlinedTextField(
+                var showLocationSearch by remember { mutableStateOf(false) }
+                TextButton(onClick = { showLocationSearch = true }) { Text("Search location (OpenStreetMap)") }
+                DateTimePickerField(
+                    label = "Start",
                     value = startStr,
-                    onValueChange = { startStr = it },
-                    label = { Text("Start (yyyy-MM-dd HH:mm)") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    onValueChange = { startStr = it }
                 )
-                OutlinedTextField(
+                DateTimePickerField(
+                    label = "End (optional)",
                     value = endStr,
                     onValueChange = { endStr = it },
-                    label = { Text("End (optional)") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    allowClear = true
                 )
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -477,6 +462,81 @@ private fun EventFormDialog(
                                     onClick = { selectedListId = cal.id; calendarExpanded = false }
                                 )
                             }
+                        }
+                    }
+                }
+                if (showLocationSearch) {
+                    LocationSearchDialog(
+                        onDismiss = { showLocationSearch = false },
+                        onSelect = {
+                            location = it.displayName
+                            showLocationSearch = false
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LocationSearchDialog(
+    onDismiss: () -> Unit,
+    onSelect: (OsmSuggestion) -> Unit
+) {
+    var query by rememberSaveable { mutableStateOf("") }
+    var results by remember { mutableStateOf(emptyList<OsmSuggestion>()) }
+    var loading by remember { mutableStateOf(false) }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text("Search location") },
+                    navigationIcon = {
+                        IconButton(onClick = onDismiss) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        }
+                    }
+                )
+            }
+        ) { innerPadding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    label = { Text("Address or place") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Button(
+                    onClick = {
+                        loading = true
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("Search") }
+
+                LaunchedEffect(loading) {
+                    if (!loading) return@LaunchedEffect
+                    results = OsmLocationService.search(query)
+                    loading = false
+                }
+
+                if (loading) {
+                    CircularProgressIndicator()
+                } else {
+                    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                        results.forEach { item ->
+                            TextButton(onClick = { onSelect(item) }, modifier = Modifier.fillMaxWidth()) {
+                                Text(item.displayName)
+                            }
+                            HorizontalDivider()
                         }
                     }
                 }

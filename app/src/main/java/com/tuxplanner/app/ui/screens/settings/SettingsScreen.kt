@@ -35,6 +35,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
@@ -257,7 +259,7 @@ private fun ExternalCalendarPage(
     modifier: Modifier = Modifier,
     uiState: ExternalCalendarUiState,
     onRefresh: () -> Unit,
-    onAddFeed: (String, String, String, String, String?, String?, () -> Unit) -> Unit,
+    onAddFeed: (String, String, String, String, () -> Unit) -> Unit,
     onSync: (Int) -> Unit,
     onToggleFeed: (IcalFeedResponse) -> Unit,
     onDeleteFeed: (Int) -> Unit,
@@ -318,8 +320,8 @@ private fun ExternalCalendarPage(
         AddFeedDialog(
             isAdding = uiState.isAdding,
             onDismiss = { showAdd = false },
-            onConfirm = { name, url, color, type, user, pass ->
-                onAddFeed(name, url, color, type, user, pass) { showAdd = false }
+            onConfirm = { name, url, color, type ->
+                onAddFeed(name, url, color, type) { showAdd = false }
             }
         )
     }
@@ -329,14 +331,12 @@ private fun ExternalCalendarPage(
 private fun AddFeedDialog(
     isAdding: Boolean,
     onDismiss: () -> Unit,
-    onConfirm: (String, String, String, String, String?, String?) -> Unit
+    onConfirm: (String, String, String, String) -> Unit
 ) {
     var name by rememberSaveable { mutableStateOf("") }
     var url by rememberSaveable { mutableStateOf("") }
     var color by rememberSaveable { mutableStateOf("#3b82f6") }
     var type by rememberSaveable { mutableStateOf("ical") }
-    var username by rememberSaveable { mutableStateOf("") }
-    var password by rememberSaveable { mutableStateOf("") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -344,13 +344,26 @@ private fun AddFeedDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Name") }, singleLine = true)
-                OutlinedTextField(value = url, onValueChange = { url = it }, label = { Text("URL") }, singleLine = true)
-                OutlinedTextField(value = color, onValueChange = { color = it }, label = { Text("Color (#hex)") }, singleLine = true)
-                OutlinedTextField(value = type, onValueChange = { type = it }, label = { Text("Type (ical/caldav)") }, singleLine = true)
-                if (type == "caldav") {
-                    OutlinedTextField(value = username, onValueChange = { username = it }, label = { Text("Username") }, singleLine = true)
-                    OutlinedTextField(value = password, onValueChange = { password = it }, label = { Text("Password") }, singleLine = true)
+                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                    SegmentedButton(
+                        shape = androidx.compose.material3.SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+                        onClick = { type = "ical" },
+                        selected = type == "ical"
+                    ) { Text("iCal") }
+                    SegmentedButton(
+                        shape = androidx.compose.material3.SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+                        onClick = { type = "webcal" },
+                        selected = type == "webcal"
+                    ) { Text("Webcal") }
                 }
+                OutlinedTextField(
+                    value = url,
+                    onValueChange = { url = it },
+                    label = { Text(if (type == "webcal") "Webcal URL" else "iCal URL") },
+                    placeholder = { Text(if (type == "webcal") "webcal://..." else "https://...") },
+                    singleLine = true
+                )
+                OutlinedTextField(value = color, onValueChange = { color = it }, label = { Text("Color (#hex)") }, singleLine = true)
             }
         },
         confirmButton = {
@@ -361,9 +374,7 @@ private fun AddFeedDialog(
                         name.trim(),
                         url.trim(),
                         color.trim(),
-                        type.trim(),
-                        username.trim().ifBlank { null },
-                        password.ifBlank { null }
+                        type.trim()
                     )
                 }
             ) { Text(if (isAdding) "Adding..." else "Add & Sync") }

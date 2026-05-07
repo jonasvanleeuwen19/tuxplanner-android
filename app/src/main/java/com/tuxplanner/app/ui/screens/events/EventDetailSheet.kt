@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -13,32 +14,29 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Notes
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,6 +46,9 @@ import androidx.compose.ui.unit.dp
 import com.tuxplanner.app.data.model.CalendarListResponse
 import com.tuxplanner.app.data.model.EventResponse
 import com.tuxplanner.app.data.model.TodoResponse
+import com.tuxplanner.app.ui.common.OsmMiniMap
+import androidx.compose.material3.Checkbox
+import androidx.compose.ui.window.Dialog
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -58,7 +59,7 @@ fun EventDetailSheet(
     event: EventResponse,
     calendarLists: List<CalendarListResponse>,
     linkedTodos: List<TodoResponse>,
-    availableTodos: List<TodoResponse>,
+    allTodos: List<TodoResponse>,
     onDismiss: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
@@ -66,8 +67,7 @@ fun EventDetailSheet(
     onUnlinkTodo: (Int) -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
-    var taskExpanded by remember { mutableStateOf(false) }
-    var selectedTodoId by remember { mutableStateOf<Int?>(null) }
+    var showTaskManager by remember { mutableStateOf(false) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -134,6 +134,7 @@ fun EventDetailSheet(
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
+                OsmMiniMap(locationText = event.location, modifier = Modifier.fillMaxWidth())
             }
 
             // Description
@@ -156,47 +157,8 @@ fun EventDetailSheet(
             // Linked todos count
             InfoRow(label = "Linked Tasks", value = "${linkedTodos.size}")
             if (event.source != "ical") {
-                ExposedDropdownMenuBox(
-                    expanded = taskExpanded,
-                    onExpandedChange = { taskExpanded = it }
-                ) {
-                    val selectedTaskName = remember(selectedTodoId, availableTodos) {
-                        availableTodos.find { it.id == selectedTodoId }?.title ?: "Select task to link"
-                    }
-                    OutlinedTextField(
-                        value = selectedTaskName,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Link existing task") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = taskExpanded) },
-                        modifier = Modifier
-                            .menuAnchor(MenuAnchorType.PrimaryNotEditable)
-                            .fillMaxWidth()
-                    )
-                    ExposedDropdownMenu(
-                        expanded = taskExpanded,
-                        onDismissRequest = { taskExpanded = false }
-                    ) {
-                        availableTodos.forEach { todo ->
-                            DropdownMenuItem(
-                                text = { Text(todo.title) },
-                                onClick = {
-                                    selectedTodoId = todo.id
-                                    taskExpanded = false
-                                }
-                            )
-                        }
-                    }
-                }
-                if (selectedTodoId != null) {
-                    OutlinedButton(
-                        onClick = { selectedTodoId?.let { onLinkTodo(it) } },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.Default.Link, contentDescription = "Link task")
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Link task")
-                    }
+                OutlinedButton(onClick = { showTaskManager = true }, modifier = Modifier.fillMaxWidth()) {
+                    Text("Manage linked tasks")
                 }
             }
             linkedTodos.forEach { todo ->
@@ -236,6 +198,68 @@ fun EventDetailSheet(
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("Delete")
                     }
+                }
+            }
+        }
+    }
+
+    if (showTaskManager) {
+        LinkedTasksManagerDialog(
+            todos = allTodos,
+            initiallyLinkedIds = linkedTodos.map { it.id }.toSet(),
+            onDismiss = { showTaskManager = false },
+            onSave = { selectedIds ->
+                val linkedIds = linkedTodos.map { it.id }.toSet()
+                (selectedIds - linkedIds).forEach { onLinkTodo(it) }
+                (linkedIds - selectedIds).forEach { onUnlinkTodo(it) }
+                showTaskManager = false
+            }
+        )
+    }
+}
+
+@Composable
+private fun LinkedTasksManagerDialog(
+    todos: List<TodoResponse>,
+    initiallyLinkedIds: Set<Int>,
+    onDismiss: () -> Unit,
+    onSave: (Set<Int>) -> Unit
+) {
+    var selectedIds by rememberSaveable { mutableStateOf(initiallyLinkedIds) }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text("Linked tasks") },
+                    navigationIcon = {
+                        IconButton(onClick = onDismiss) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        }
+                    },
+                    actions = { TextButton(onClick = { onSave(selectedIds) }) { Text("Save") } }
+                )
+            }
+        ) { innerPadding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                todos.forEach { todo ->
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                        Checkbox(
+                            checked = selectedIds.contains(todo.id),
+                            onCheckedChange = { checked ->
+                                selectedIds = if (checked) selectedIds + todo.id else selectedIds - todo.id
+                            }
+                        )
+                        Text(todo.title, modifier = Modifier.weight(1f))
+                    }
+                    HorizontalDivider()
                 }
             }
         }
