@@ -63,8 +63,6 @@ import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 
-private val CALENDAR_EMPTY_CELL_HEIGHT = 40.dp
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TodoDetailSheet(
@@ -451,6 +449,7 @@ private fun CalendarSelectionGrid(
     selectedDates: Set<java.time.LocalDate>,
     onToggleDate: (java.time.LocalDate) -> Unit
 ) {
+    val calendarEmptyCellHeight = 40.dp
     val firstDay = month.atDay(1)
     val startOffset = firstDay.dayOfWeek.value - 1
     val totalDays = month.lengthOfMonth()
@@ -468,7 +467,7 @@ private fun CalendarSelectionGrid(
                 val idx = row * 7 + col
                 val day = idx - startOffset + 1
                 if (day !in 1..totalDays) {
-                    Spacer(modifier = Modifier.weight(1f).height(CALENDAR_EMPTY_CELL_HEIGHT))
+                    Spacer(modifier = Modifier.weight(1f).height(calendarEmptyCellHeight))
                 } else {
                     val date = month.atDay(day)
                     FilterChip(

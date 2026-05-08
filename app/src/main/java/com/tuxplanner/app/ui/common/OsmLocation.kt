@@ -40,7 +40,7 @@ object OsmLocationService {
         val encoded = URLEncoder.encode(query, "UTF-8")
         val request = Request.Builder()
             .url("https://nominatim.openstreetmap.org/search?format=jsonv2&q=$encoded&limit=$limit")
-            .header("User-Agent", "tuxplanner-android/${BuildConfig.VERSION_NAME} (android)")
+            .header("User-Agent", "tuxplanner-android/${BuildConfig.VERSION_NAME} (https://github.com/jonasvanleeuwen19/tuxplanner-android)")
             .build()
         runCatching {
             client.newCall(request).execute().use { response ->
