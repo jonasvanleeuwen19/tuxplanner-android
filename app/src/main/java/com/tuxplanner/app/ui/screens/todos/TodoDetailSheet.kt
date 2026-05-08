@@ -19,7 +19,6 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Timer
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -32,11 +31,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -47,7 +49,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import com.tuxplanner.app.ui.common.TimePickerField
 import com.tuxplanner.app.data.model.TaskSessionResponse
 import com.tuxplanner.app.data.model.TodoResponse
 import com.tuxplanner.app.ui.theme.PriorityHigh
@@ -395,7 +400,7 @@ private fun AddSessionDialog(
                             text = month.format(DateTimeFormatter.ofPattern("MMMM yyyy")),
                             style = MaterialTheme.typography.titleSmall,
                             modifier = Modifier.weight(1f),
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            textAlign = TextAlign.Center
                         )
                         TextButton(onClick = { month = month.plusMonths(1) }) { Text("Next") }
                     }
@@ -412,12 +417,12 @@ private fun AddSessionDialog(
                         androidx.compose.material3.Card(modifier = Modifier.fillMaxWidth()) {
                             Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Text(date.toString(), style = MaterialTheme.typography.titleSmall)
-                                com.tuxplanner.app.ui.common.TimePickerField(
+                                TimePickerField(
                                     label = "Start time",
                                     value = cfg.startTime,
                                     onValueChange = { value -> dayConfigs = dayConfigs + (date to cfg.copy(startTime = value)) }
                                 )
-                                com.tuxplanner.app.ui.common.TimePickerField(
+                                TimePickerField(
                                     label = "End time",
                                     value = cfg.endTime,
                                     onValueChange = { value -> dayConfigs = dayConfigs + (date to cfg.copy(endTime = value)) }
@@ -452,7 +457,7 @@ private fun CalendarSelectionGrid(
 
     Row(modifier = Modifier.fillMaxWidth()) {
         listOf("Mo", "Tu", "We", "Th", "Fr", "Sa", "Su").forEach { label ->
-            Text(label, modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            Text(label, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
         }
     }
     repeat(rows) { row ->

@@ -60,11 +60,12 @@ fun DateTimePickerField(
         readOnly = true,
         label = { Text(label) },
         trailingIcon = {
-            if (allowClear && value.isNotBlank()) {
-                IconButton(onClick = { onValueChange("") }) {
-                    Icon(Icons.Default.Clear, contentDescription = "Clear date")
+            androidx.compose.foundation.layout.Row {
+                if (allowClear && value.isNotBlank()) {
+                    IconButton(onClick = { onValueChange("") }) {
+                        Icon(Icons.Default.Clear, contentDescription = "Clear date")
+                    }
                 }
-            } else {
                 IconButton(onClick = { openDateTimePicker() }) {
                     Icon(Icons.Default.CalendarToday, contentDescription = "Pick date")
                 }

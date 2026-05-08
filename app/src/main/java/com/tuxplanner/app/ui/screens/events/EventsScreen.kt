@@ -28,11 +28,13 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Button
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -165,7 +167,7 @@ fun EventsScreen(onNavigateToCalendarLists: () -> Unit = {}) {
                         onClick = { viewModel.setCalendarListFilter(null) },
                         label = { Text("All") }
                     )
-                    uiState.calendarLists.forEach { cal ->
+                    uiState.calendarLists.filter { it.isVisible }.forEach { cal ->
                         FilterChip(
                             selected = uiState.filterCalendarListId == cal.id,
                             onClick = {

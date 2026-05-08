@@ -61,19 +61,19 @@ class ExternalCalendarViewModel(
         url: String,
         color: String,
         feedType: String,
-        caldavUsername: String?,
-        caldavPassword: String?,
         onDone: () -> Unit
     ) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isAdding = true, error = null)
+            val normalizedType = if (feedType.equals("webcal", ignoreCase = true)) "ical" else feedType.lowercase()
+            val normalizedUrl = if (url.startsWith("webcal://")) {
+                "https://${url.removePrefix("webcal://")}"
+            } else url
             when (val result = feedRepository.createFeed(IcalFeedCreate(
                 name = name,
-                url = url,
+                url = normalizedUrl,
                 color = color,
-                feedType = feedType.lowercase(),
-                caldavUsername = caldavUsername,
-                caldavPassword = caldavPassword
+                feedType = normalizedType
             ))) {
                 is ApiResult.Success -> {
                     _uiState.value = _uiState.value.copy(isAdding = false)

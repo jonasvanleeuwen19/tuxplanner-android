@@ -1,5 +1,6 @@
 package com.tuxplanner.app.ui.screens.dashboard
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,8 +26,10 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -75,6 +78,8 @@ fun DashboardScreen() {
     )
 
     val uiState by viewModel.uiState.collectAsState()
+    var selectedEventInfo by remember { mutableStateOf<EventResponse?>(null) }
+    var selectedTodoInfo by remember { mutableStateOf<TodoResponse?>(null) }
 
     var currentTime by remember { mutableStateOf(LocalTime.now()) }
     LaunchedEffect(Unit) {
@@ -164,7 +169,7 @@ fun DashboardScreen() {
                     )
                 } else {
                     uiState.todayEvents.forEach { event ->
-                        EventSummaryRow(event = event)
+                        EventSummaryRow(event = event, onClick = { selectedEventInfo = event })
                         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                     }
                 }
@@ -183,7 +188,8 @@ fun DashboardScreen() {
                     uiState.todayTodos.forEach { todo ->
                         TodoSummaryRow(
                             todo = todo,
-                            onToggle = { viewModel.toggleTodoComplete(todo) }
+                            onToggle = { viewModel.toggleTodoComplete(todo) },
+                            onClick = { selectedTodoInfo = todo }
                         )
                         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                     }
@@ -201,7 +207,7 @@ fun DashboardScreen() {
                     )
                 } else {
                     uiState.workSessions.forEach { session ->
-                        EventSummaryRow(event = session)
+                        EventSummaryRow(event = session, onClick = { selectedEventInfo = session })
                         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                     }
                 }
@@ -215,6 +221,36 @@ fun DashboardScreen() {
                 )
             }
         }
+    }
+
+    selectedEventInfo?.let { event ->
+        AlertDialog(
+            onDismissRequest = { selectedEventInfo = null },
+            title = { Text(event.title) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("Start: ${event.start}")
+                    event.end?.let { Text("End: $it") }
+                    if (!event.location.isNullOrBlank()) Text("Location: ${event.location}")
+                    if (!event.description.isNullOrBlank()) Text(event.description)
+                }
+            },
+            confirmButton = { TextButton(onClick = { selectedEventInfo = null }) { Text("Close") } }
+        )
+    }
+    selectedTodoInfo?.let { todo ->
+        AlertDialog(
+            onDismissRequest = { selectedTodoInfo = null },
+            title = { Text(todo.title) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("Priority: ${todo.priority}")
+                    if (!todo.dueDate.isNullOrBlank()) Text("Due: ${todo.dueDate}")
+                    if (!todo.description.isNullOrBlank()) Text(todo.description ?: "")
+                }
+            },
+            confirmButton = { TextButton(onClick = { selectedTodoInfo = null }) { Text("Close") } }
+        )
     }
 }
 
@@ -240,10 +276,11 @@ private fun DashboardCard(
 }
 
 @Composable
-private fun EventSummaryRow(event: EventResponse) {
+private fun EventSummaryRow(event: EventResponse, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable(onClick = onClick)
             .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -263,10 +300,11 @@ private fun EventSummaryRow(event: EventResponse) {
 }
 
 @Composable
-private fun TodoSummaryRow(todo: TodoResponse, onToggle: () -> Unit) {
+private fun TodoSummaryRow(todo: TodoResponse, onToggle: () -> Unit, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable(onClick = onClick)
             .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
