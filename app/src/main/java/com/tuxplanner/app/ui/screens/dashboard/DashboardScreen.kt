@@ -246,7 +246,7 @@ fun DashboardScreen() {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text("Priority: ${todo.priority}")
                     if (!todo.dueDate.isNullOrBlank()) Text("Due: ${todo.dueDate}")
-                    if (!todo.description.isNullOrBlank()) Text(todo.description ?: "")
+                    if (!todo.description.isNullOrBlank()) Text(todo.description)
                 }
             },
             confirmButton = { TextButton(onClick = { selectedTodoInfo = null }) { Text("Close") } }

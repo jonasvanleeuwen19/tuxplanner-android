@@ -488,8 +488,8 @@ fun AgendaCalendarView(
             .toSortedMap()
     }
     val orderedDates = remember(eventsByDate, today) {
-        val allDates = eventsByDate.keys.toList()
-        allDates.filter { !it.isBefore(today) } + allDates.filter { it.isBefore(today) }
+        val (fromToday, beforeToday) = eventsByDate.keys.partition { !it.isBefore(today) }
+        fromToday + beforeToday
     }
 
     LazyColumn(modifier = Modifier.fillMaxSize()) {

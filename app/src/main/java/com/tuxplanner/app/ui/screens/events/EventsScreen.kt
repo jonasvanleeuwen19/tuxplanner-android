@@ -46,6 +46,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -67,6 +68,7 @@ import com.tuxplanner.app.ui.common.DateTimePickerField
 import com.tuxplanner.app.ui.common.MarkdownEditorField
 import com.tuxplanner.app.ui.common.OsmLocationService
 import com.tuxplanner.app.ui.common.OsmSuggestion
+import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
@@ -489,6 +491,7 @@ private fun LocationSearchDialog(
     var query by rememberSaveable { mutableStateOf("") }
     var results by remember { mutableStateOf(emptyList<OsmSuggestion>()) }
     var loading by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
     Dialog(onDismissRequest = onDismiss) {
         Scaffold(
@@ -520,15 +523,13 @@ private fun LocationSearchDialog(
                 Button(
                     onClick = {
                         loading = true
+                        scope.launch {
+                            results = OsmLocationService.search(query)
+                            loading = false
+                        }
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) { Text("Search") }
-
-                LaunchedEffect(loading) {
-                    if (!loading) return@LaunchedEffect
-                    results = OsmLocationService.search(query)
-                    loading = false
-                }
 
                 if (loading) {
                     CircularProgressIndicator()

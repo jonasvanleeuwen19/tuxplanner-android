@@ -66,8 +66,8 @@ class ExternalCalendarViewModel(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isAdding = true, error = null)
             val normalizedType = if (feedType.equals("webcal", ignoreCase = true)) "ical" else feedType.lowercase()
-            val normalizedUrl = if (url.startsWith("webcal://")) {
-                "https://${url.removePrefix("webcal://")}"
+            val normalizedUrl = if (url.startsWith("webcal://", ignoreCase = true)) {
+                "https://${url.substring(9)}"
             } else url
             when (val result = feedRepository.createFeed(IcalFeedCreate(
                 name = name,
