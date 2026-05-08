@@ -3,6 +3,7 @@ package com.tuxplanner.app.ui.common
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.os.Build
+import com.tuxplanner.app.BuildConfig
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -39,7 +40,7 @@ object OsmLocationService {
         val encoded = URLEncoder.encode(query, "UTF-8")
         val request = Request.Builder()
             .url("https://nominatim.openstreetmap.org/search?format=jsonv2&q=$encoded&limit=$limit")
-            .header("User-Agent", "tuxplanner-android/1.0 (android)")
+            .header("User-Agent", "tuxplanner-android/${BuildConfig.VERSION_NAME} (android)")
             .build()
         runCatching {
             client.newCall(request).execute().use { response ->
@@ -93,6 +94,8 @@ fun OsmMiniMap(locationText: String, modifier: Modifier = Modifier) {
                     WebView(ctx).apply {
                         settings.javaScriptEnabled = false
                         settings.cacheMode = WebSettings.LOAD_NO_CACHE
+                        settings.allowFileAccess = false
+                        settings.allowContentAccess = false
                         settings.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                             settings.safeBrowsingEnabled = true
