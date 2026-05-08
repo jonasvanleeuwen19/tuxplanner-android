@@ -13,6 +13,7 @@ import com.tuxplanner.app.data.repository.IcalFeedRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlin.text.RegexOption
 
 data class ExternalCalendarUiState(
     val isLoading: Boolean = false,
@@ -66,9 +67,7 @@ class ExternalCalendarViewModel(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isAdding = true, error = null)
             val normalizedType = if (feedType.equals("webcal", ignoreCase = true)) "ical" else feedType.lowercase()
-            val normalizedUrl = if (url.startsWith("webcal://", ignoreCase = true)) {
-                "https://${url.substring(9)}"
-            } else url
+            val normalizedUrl = url.replaceFirst(Regex("^webcal://", RegexOption.IGNORE_CASE), "https://")
             when (val result = feedRepository.createFeed(IcalFeedCreate(
                 name = name,
                 url = normalizedUrl,

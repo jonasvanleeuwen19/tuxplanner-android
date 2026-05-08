@@ -95,9 +95,9 @@ fun EventsScreen(onNavigateToCalendarLists: () -> Unit = {}) {
     val filteredEvents = remember(uiState.events, uiState.filterCalendarListId, uiState.calendarLists) {
         val visibleListIds = uiState.calendarLists.filter { it.isVisible }.map { it.id }.toSet()
         uiState.events.filter { event ->
-            val visibleMatch = event.calendarListId == null || visibleListIds.contains(event.calendarListId)
+            val calendarVisibilityMatch = event.calendarListId == null || visibleListIds.contains(event.calendarListId)
             val filterMatch = uiState.filterCalendarListId == null || event.calendarListId == uiState.filterCalendarListId
-            visibleMatch && filterMatch
+            calendarVisibilityMatch && filterMatch
         }
     }
 
@@ -491,6 +491,7 @@ private fun LocationSearchDialog(
     var query by rememberSaveable { mutableStateOf("") }
     var results by remember { mutableStateOf(emptyList<OsmSuggestion>()) }
     var loading by remember { mutableStateOf(false) }
+    var searchError by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
     Dialog(onDismissRequest = onDismiss) {
@@ -523,13 +524,19 @@ private fun LocationSearchDialog(
                 Button(
                     onClick = {
                         loading = true
+                        searchError = null
                         scope.launch {
-                            results = OsmLocationService.search(query)
+                            runCatching { OsmLocationService.search(query) }
+                                .onSuccess { results = it }
+                                .onFailure { searchError = it.message ?: "Location search failed" }
                             loading = false
                         }
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) { Text("Search") }
+                searchError?.let {
+                    Text(text = it, color = MaterialTheme.colorScheme.error)
+                }
 
                 if (loading) {
                     CircularProgressIndicator()
