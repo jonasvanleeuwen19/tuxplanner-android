@@ -220,6 +220,7 @@ fun EventDetailSheet(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun LinkedTasksManagerDialog(
     todos: List<TodoResponse>,

@@ -319,6 +319,7 @@ private fun SessionRow(session: TaskSessionResponse, onDelete: () -> Unit) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AddSessionDialog(
     onDismiss: () -> Unit,

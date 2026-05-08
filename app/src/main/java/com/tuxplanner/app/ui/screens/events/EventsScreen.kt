@@ -483,6 +483,7 @@ private fun EventFormDialog(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun LocationSearchDialog(
     onDismiss: () -> Unit,
