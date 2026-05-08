@@ -24,6 +24,7 @@ data class TodosUiState(
     val sessions: List<TaskSessionResponse> = emptyList(),
     val isLoadingSessions: Boolean = false,
     val filter: String = "all",
+    val sort: String = "all",
     val selectedListId: Int? = null,
     val error: String? = null,
     val externalEventIds: Set<Int> = emptySet()
@@ -164,6 +165,10 @@ class TodosViewModel(
 
     fun setFilter(filter: String) {
         _uiState.value = _uiState.value.copy(filter = filter)
+    }
+
+    fun setSort(sort: String) {
+        _uiState.value = _uiState.value.copy(sort = sort)
     }
 
     fun setListFilter(listId: Int?) {

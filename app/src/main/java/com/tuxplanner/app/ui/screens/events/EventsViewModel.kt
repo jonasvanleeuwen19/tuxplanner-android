@@ -15,12 +15,10 @@ import com.tuxplanner.app.data.repository.TodoRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
-import java.time.temporal.TemporalAdjusters
 
-enum class CalendarViewType { Month, Week, List }
+enum class CalendarViewType { Month, List }
 
 data class EventsUiState(
     val isLoading: Boolean = false,
@@ -31,7 +29,6 @@ data class EventsUiState(
     val viewType: CalendarViewType = CalendarViewType.Month,
     val selectedDate: LocalDate = LocalDate.now(),
     val displayedYearMonth: YearMonth = YearMonth.now(),
-    val displayedWeekStart: LocalDate = LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)),
     val linkedTasks: List<TodoResponse> = emptyList(),
     val allTodos: List<TodoResponse> = emptyList()
 )
@@ -177,13 +174,4 @@ class EventsViewModel(
         _uiState.value = _uiState.value.copy(displayedYearMonth = next)
     }
 
-    fun prevWeek() {
-        val prev = _uiState.value.displayedWeekStart.minusWeeks(1)
-        _uiState.value = _uiState.value.copy(displayedWeekStart = prev)
-    }
-
-    fun nextWeek() {
-        val next = _uiState.value.displayedWeekStart.plusWeeks(1)
-        _uiState.value = _uiState.value.copy(displayedWeekStart = next)
-    }
 }
